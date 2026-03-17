@@ -1,0 +1,1512 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ROD Liczniki</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+:root{
+  --g900:#0f1f16;--g800:#1a3324;--g700:#245233;--g600:#2f7048;
+  --g500:#3a8f5d;--g400:#5aaa7a;--g300:#8ecba3;--g200:#c2e8d0;--g100:#eaf6ef;
+  --paper:#f7faf8;--white:#fff;
+  --red:#c0392b;--amber:#c87f00;--blue:#1a6fa8;
+  --border:#d0e8da;--text:#0f1f16;--muted:#5a7a65;
+  --shadow:0 1px 4px #0f1f1610,0 3px 12px #0f1f160a;
+  --r:8px;--rsm:5px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--text);min-height:100vh;font-size:14px}
+
+/* OVERLAY */
+.overlay{position:fixed;inset:0;background:linear-gradient(150deg,var(--g900),var(--g800));z-index:1000;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.overlay.hidden{display:none!important}
+.obox{background:#fff;border-radius:18px;padding:2.2rem;width:100%;max-width:480px;box-shadow:0 24px 64px #00000045}
+.brand{font-size:1.45rem;font-weight:700;color:var(--g800);letter-spacing:-.02em;margin-bottom:.2rem}
+.brand span{color:var(--g500)}
+.brand-sub{font-size:.8rem;color:var(--muted);margin-bottom:1.8rem}
+.steps{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.4rem}
+.step{background:var(--g100);border:1px solid var(--border);border-radius:var(--rsm);padding:.75rem .9rem;font-size:.8rem;color:var(--g700);line-height:1.55}
+.step strong{display:block;font-weight:600;color:var(--g800);margin-bottom:.1rem}
+.step code{font-family:'JetBrains Mono',monospace;background:#fff;border:1px solid var(--border);padding:.05em .3em;border-radius:3px;font-size:.76rem}
+.cfg-input{width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:var(--rsm);font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--text);background:#fff;outline:none;transition:border-color .18s;margin-bottom:.55rem}
+.cfg-input:focus{border-color:var(--g500)}
+.row-btns{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.3rem}
+.setup-err,.login-err{color:var(--red);font-size:.78rem;margin:.3rem 0;display:none}
+.field{margin-bottom:.85rem}
+.field label{display:block;font-size:.72rem;font-weight:600;color:var(--g700);margin-bottom:.28rem;text-transform:uppercase;letter-spacing:.05em}
+.field input{width:100%;padding:.65rem .9rem;border:1.5px solid var(--border);border-radius:var(--rsm);font-family:'Inter',sans-serif;font-size:.9rem;outline:none;transition:border-color .18s}
+.field input:focus{border-color:var(--g500)}
+.link-sm{text-align:center;margin-top:.7rem;font-size:.78rem;color:var(--muted)}
+.link-sm a,.link-xs a{color:var(--g500);cursor:pointer;text-decoration:none}
+.link-xs{text-align:center;margin-top:.35rem;font-size:.7rem}.link-xs a{color:#bbb}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:.3rem;padding:.52rem 1.1rem;border:none;border-radius:var(--rsm);font-family:'Inter',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;transition:all .14s;white-space:nowrap}
+.btn-primary{background:var(--g700);color:#fff}.btn-primary:hover{background:var(--g800)}
+.btn-secondary{background:var(--g200);color:var(--g800)}.btn-secondary:hover{background:var(--g300)}
+.btn-danger{background:#fde8e8;color:var(--red)}.btn-danger:hover{background:var(--red);color:#fff}
+.btn-ghost{background:transparent;color:var(--muted);border:1.5px solid var(--border)}.btn-ghost:hover{background:var(--g100);color:var(--g700)}
+.btn-amber{background:#fef3d0;color:var(--amber)}.btn-amber:hover{background:#fde8a0}
+.btn-full{width:100%;justify-content:center;padding:.75rem;font-size:.92rem}
+.btn-sm{padding:.28rem .65rem;font-size:.75rem}
+.btn-lg{padding:.7rem 1.5rem;font-size:.9rem}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-help{background:none;border:none;cursor:pointer;width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;color:#ffffff88;transition:all .15s}
+.btn-help:hover{background:#ffffff18;color:#fff}
+
+/* HEADER */
+header{background:var(--g900);color:#fff;padding:0 1.4rem;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:200}
+.hbrand{font-size:.95rem;font-weight:700;letter-spacing:-.01em}
+.hbrand span{color:var(--g300)}
+.hright{display:flex;align-items:center;gap:.6rem}
+.huser{font-size:.73rem;color:#ffffff55}
+.role-badge{font-size:.68rem;padding:.18em .65em;border-radius:20px;font-weight:700}
+.role-admin{background:#2d7a4a;color:#b8f0cc}
+.role-viewer{background:#2a3f50;color:#90c8e8}
+
+/* TABS */
+nav.tabs{background:var(--g800);display:flex;padding:0 1.4rem;gap:.05rem}
+nav.tabs button{background:none;border:none;border-bottom:2px solid transparent;color:#ffffff55;font-family:'Inter',sans-serif;font-size:.8rem;font-weight:500;padding:.6rem .95rem;cursor:pointer;transition:all .16s;white-space:nowrap}
+nav.tabs button:hover{color:#ffffffbb}
+nav.tabs button.active{color:#fff;border-bottom-color:var(--g300)}
+
+/* LAYOUT */
+main{max-width:1180px;margin:0 auto;padding:1.5rem 1.4rem}
+.page{display:none}.page.active{display:block}
+
+/* CARDS */
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem;margin-bottom:1.2rem;box-shadow:var(--shadow)}
+.card-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;gap:.8rem;flex-wrap:wrap}
+.card-hd-left h2{font-size:.95rem;font-weight:700;color:var(--g800)}
+.card-hd-left p{font-size:.76rem;color:var(--muted);margin-top:.1rem}
+.actions{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}
+
+/* SEASON BAR */
+.season-bar{display:flex;align-items:center;gap:.8rem;padding:.85rem 1.1rem;background:var(--g100);border:1px solid var(--border);border-radius:var(--r);margin-bottom:1.2rem;flex-wrap:wrap}
+.season-bar label{font-size:.76rem;font-weight:600;color:var(--g700);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.season-bar select{padding:.45rem .8rem;border:1.5px solid var(--border);border-radius:var(--rsm);font-family:'Inter',sans-serif;font-size:.84rem;color:var(--text);background:#fff;outline:none;min-width:220px}
+.season-info{font-size:.76rem;color:var(--muted)}
+.season-info strong{color:var(--g700)}
+
+/* READING TABLE */
+.reading-table-wrap{overflow-x:auto;border-radius:var(--rsm);border:1px solid var(--border)}
+.reading-table{width:100%;border-collapse:collapse;font-size:.82rem}
+.reading-table thead th{text-align:left;padding:.55rem .9rem;background:var(--g900);color:#fff;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.reading-table tbody tr{border-bottom:1px solid #eef4f0;transition:background .1s}
+.reading-table tbody tr:last-child{border-bottom:none}
+.reading-table tbody tr:hover{background:#f3f9f5}
+.reading-table tbody tr.has-reading{background:#f0faf4}
+.reading-table td{padding:.55rem .9rem;vertical-align:middle}
+.reading-table td.mono{font-family:'JetBrains Mono',monospace;font-size:.79rem}
+.reading-input{width:110px;padding:.4rem .6rem;border:1.5px solid var(--border);border-radius:var(--rsm);font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--text);background:#fff;outline:none;transition:border-color .18s,background .18s;text-align:right}
+.reading-input:focus{border-color:var(--g500);background:#f0fff6}
+.reading-input.changed{border-color:var(--g400);background:#e8f8ef}
+.zuzycie-pos{color:#1a6633;font-weight:600}
+.zuzycie-neg{color:var(--red);font-weight:600}
+.reading-status{display:inline-flex;align-items:center;gap:.25rem;font-size:.72rem;font-weight:600;padding:.15em .55em;border-radius:20px}
+.rs-done{background:#d4f0dd;color:#155724}
+.rs-empty{background:#f0f0f0;color:#888}
+.rs-changed{background:#fff3cd;color:#856404}
+
+/* SAVE BAR */
+.save-bar{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--border);padding:.8rem 1.4rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;box-shadow:0 -2px 12px #0f1f160a;z-index:100}
+.save-bar-info{font-size:.8rem;color:var(--muted)}
+.save-bar-info strong{color:var(--g700)}
+
+/* TABLE */
+.tw{overflow-x:auto;border-radius:var(--rsm);border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:.81rem}
+thead th{text-align:left;padding:.55rem .9rem;background:var(--g900);color:#fff;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+tbody tr{border-bottom:1px solid #eef4f0;transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#f3f9f5}
+tbody td{padding:.55rem .9rem;vertical-align:middle}
+td.mono{font-family:'JetBrains Mono',monospace;font-size:.78rem}
+tr.row-alert{background:#fff5f5}tr.row-alert:hover{background:#ffe8e8}
+tr.row-warn{background:#fffbf0}tr.row-warn:hover{background:#fef3d0}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:.2rem;padding:.15em .6em;border-radius:20px;font-size:.71rem;font-weight:600;white-space:nowrap}
+.b-green{background:#d4f0dd;color:#155724}.b-amber{background:#fdeecf;color:#7a4f00}
+.b-red{background:#fde8e8;color:var(--red)}.b-gray{background:#eee;color:#555}.b-blue{background:#dceef8;color:var(--blue)}
+
+/* FILTERS */
+.filters{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.9rem;align-items:center}
+.filters input[type=search],.filters select{padding:.45rem .8rem;border:1.5px solid var(--border);border-radius:var(--rsm);font-family:'Inter',sans-serif;font-size:.8rem;color:var(--text);background:#fff;outline:none;transition:border-color .18s}
+.filters input[type=search]{flex:1;min-width:160px}
+.filters input:focus,.filters select:focus{border-color:var(--g400)}
+
+/* MODAL */
+.modal-bd{position:fixed;inset:0;background:#00000050;z-index:500;display:flex;align-items:center;justify-content:center;padding:1.2rem;opacity:0;pointer-events:none;transition:opacity .18s}
+.modal-bd.open{opacity:1;pointer-events:all}
+.modal{background:#fff;border-radius:12px;padding:1.6rem;max-width:520px;width:100%;max-height:92vh;overflow-y:auto;box-shadow:0 8px 40px #00000025;transform:translateY(14px);transition:transform .18s}
+.modal-bd.open .modal{transform:translateY(0)}
+.modal-lg{max-width:760px}.modal-xl{max-width:880px}
+.modal h3{font-size:1rem;font-weight:700;color:var(--g800);margin-bottom:1.1rem}
+.fr{margin-bottom:.8rem}
+.fr label{display:block;font-size:.71rem;font-weight:600;color:var(--g700);margin-bottom:.25rem;text-transform:uppercase;letter-spacing:.05em}
+.fr input,.fr select,.fr textarea{width:100%;padding:.58rem .85rem;border:1.5px solid var(--border);border-radius:var(--rsm);font-family:'Inter',sans-serif;font-size:.86rem;outline:none;transition:border-color .18s;background:#fff;color:var(--text)}
+.fr input:focus,.fr select:focus,.fr textarea:focus{border-color:var(--g500)}
+.fr input[readonly]{background:#f5f7f5;color:var(--muted)}
+.fr textarea{resize:vertical;min-height:60px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 .9rem}
+.mfooter{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1.1rem;padding-top:.9rem;border-top:1px solid var(--border);flex-wrap:wrap}
+.ferr{color:var(--red);font-size:.77rem;margin-top:.35rem;display:none;padding:.35rem .65rem;background:#fde8e8;border-radius:var(--rsm)}
+
+/* SETTINGS SECTIONS */
+.setting-section{margin-bottom:1rem}
+.setting-section-hd{display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;background:var(--g100);border:1px solid var(--border);border-radius:var(--r);cursor:pointer;user-select:none}
+.setting-section-hd h3{font-size:.88rem;font-weight:600;color:var(--g800)}
+.setting-section-body{border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r) var(--r);overflow:hidden;display:none}
+.setting-section-body.open{display:block}
+
+/* PREVIEW TABLE */
+.preview-tbl{width:100%;border-collapse:collapse;font-size:.79rem}
+.preview-tbl th{text-align:left;padding:.42rem .7rem;background:var(--g100);color:var(--g700);font-size:.69rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.preview-tbl td{padding:.42rem .7rem;border-bottom:1px solid var(--border)}
+.preview-tbl tr:last-child td{border-bottom:none}
+.preview-tbl tr.skip td{color:var(--muted);font-style:italic}
+.pok{color:#1a6633;font-weight:600}
+
+/* ALERT */
+.alert{padding:.65rem .9rem;border-radius:var(--rsm);font-size:.79rem;margin-bottom:.9rem}
+.alert-info{background:#dceef8;border:1px solid #a0cce8;color:var(--blue)}
+.alert-warn{background:#fff8e0;border:1px solid #f0d060;color:var(--amber)}
+
+/* HELP MODAL */
+.help-section{margin-bottom:1.4rem}
+.help-section h4{font-size:.88rem;font-weight:700;color:var(--g800);margin-bottom:.5rem;padding-bottom:.3rem;border-bottom:2px solid var(--g200);display:flex;align-items:center;gap:.4rem}
+.help-section p,.help-section li{font-size:.82rem;color:#333;line-height:1.6;margin-bottom:.3rem}
+.help-section ol,.help-section ul{padding-left:1.2rem}
+.help-tip{background:var(--g100);border-left:3px solid var(--g500);padding:.5rem .8rem;border-radius:0 var(--rsm) var(--rsm) 0;font-size:.79rem;color:var(--g700);margin:.5rem 0}
+
+/* TOAST */
+#toast{position:fixed;bottom:1.2rem;right:1.2rem;background:var(--g800);color:#fff;padding:.65rem 1.1rem;border-radius:var(--r);font-size:.8rem;font-weight:500;box-shadow:0 4px 20px #0003;z-index:9999;transform:translateY(50px);opacity:0;transition:all .22s;max-width:320px;line-height:1.4}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.err{background:var(--red)}#toast.ok{background:#1a6633}
+
+/* SPINNER */
+.spin{display:inline-block;width:13px;height:13px;border:2px solid #fff4;border-top-color:#fff;border-radius:50%;animation:sp .5s linear infinite;vertical-align:middle}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* VIEWER MODE */
+.admin-only{display:none}
+body.is-admin .admin-only{display:inline-flex}
+body.is-admin .admin-only-block{display:block}
+.admin-only-block{display:none}
+
+@media(max-width:600px){
+  header{padding:0 .9rem}
+  nav.tabs{padding:0 .3rem;overflow-x:auto;scrollbar-width:none}
+  nav.tabs::-webkit-scrollbar{display:none}
+  nav.tabs button{padding:.55rem .7rem;font-size:.75rem}
+  main{padding:.8rem .7rem}
+  .fgrid{grid-template-columns:1fr}
+  .save-bar{padding:.7rem .9rem;flex-direction:column;align-items:stretch}
+  .save-bar-info{text-align:center}
+  .season-bar{gap:.5rem;padding:.7rem .9rem}
+  .season-bar select{min-width:0;width:100%}
+  .card{padding:.9rem 1rem}
+  .obox{padding:1.6rem 1.2rem}
+
+  /* TABELE → KARTY na mobile */
+  .mob-cards thead{display:none}
+  .mob-cards tbody tr{display:block;background:#fff;border:1px solid var(--border);border-radius:var(--r);margin-bottom:.7rem;padding:.75rem .9rem;box-shadow:var(--shadow);position:relative}
+  .mob-cards tbody tr:hover{background:#f8fdf9}
+  .mob-cards tbody tr.row-alert{background:#fff5f5;border-color:#f0c0c0}
+  .mob-cards tbody tr.row-warn{background:#fffbf0;border-color:#f0d878}
+  .mob-cards tbody td{display:flex;justify-content:space-between;align-items:flex-start;padding:.3rem 0;border:none;font-size:.83rem;gap:.5rem;min-height:1.6rem}
+  .mob-cards tbody td:empty{display:none}
+  .mob-cards tbody td[data-label]::before{content:attr(data-label);font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;flex-shrink:0;padding-top:.1rem}
+  .mob-cards tbody td.no-label::before{display:none}
+  .mob-cards tbody td.no-label{justify-content:flex-end}
+  .mob-cards tbody td:first-child{font-size:.9rem;font-weight:700;color:var(--g800);border-bottom:1px solid var(--border);padding-bottom:.45rem;margin-bottom:.2rem}
+  .mob-cards tbody td:first-child::before{display:none}
+  /* Na mobile: komórka "Działkowiec" (druga) schowana — nr działki już w tytule karty */
+  .mob-cards tbody td[data-label="Działkowiec"]{display:none}
+  .mob-cards .tw{border:none;overflow:visible}
+
+  /* Tabela odczytów — specjalny układ */
+  .reading-table thead{display:none}
+  .reading-table tbody tr{display:block;background:#fff;border:1px solid var(--border);border-radius:var(--r);margin-bottom:.7rem;padding:.75rem .9rem;box-shadow:var(--shadow)}
+  .reading-table tbody tr.has-reading{background:#f0faf4;border-color:#b8e0c8}
+  .reading-table tbody td{display:flex;justify-content:space-between;align-items:center;padding:.28rem 0;border:none;font-size:.83rem}
+  .reading-table tbody td[data-label]::before{content:attr(data-label);font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;flex-shrink:0}
+  .reading-table tbody td:first-child{font-size:.92rem;font-weight:700;color:var(--g800);border-bottom:1px solid var(--border);padding-bottom:.45rem;margin-bottom:.15rem}
+  .reading-table tbody td:first-child::before{display:none}
+  /* Pokaż działkowca w tytule karty odczytu, schowaj osobną komórkę */
+  .reading-table tbody td:first-child::after{content:attr(data-os);font-weight:400;font-size:.78rem;color:var(--muted);margin-left:.4rem}
+  .reading-table tbody td[data-label="Działkowiec"]{display:none}
+  .reading-input{width:130px}
+
+  /* Sticky save bar na mobile */
+  .save-bar .admin-only-block{display:flex!important;gap:.5rem}
+  .btn-full-mob{width:100%;justify-content:center}
+
+  /* Modals na mobile */
+  .modal{padding:1.2rem;border-radius:10px}
+  .modal-lg,.modal-xl{max-width:100%}
+  .mfooter{flex-direction:column-reverse}
+  .mfooter .btn{width:100%;justify-content:center}
+
+  /* Season bar na mobile */
+  .season-bar>div[style]{margin-left:0!important;width:100%}
+  .season-bar>div[style] button{flex:1}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ SETUP ══ -->
+<div class="overlay" id="setup-ov">
+  <div class="obox">
+    <div class="brand">ROD <span>Liczniki</span></div>
+    <div class="brand-sub">Pierwsze uruchomienie — podaj dane Supabase</div>
+    <div class="steps">
+      <div class="step"><strong>Krok 1</strong>Wejdź na <a href="https://supabase.com" target="_blank" style="color:var(--g500)">supabase.com</a> → utwórz konto i nowy projekt (region: Frankfurt).</div>
+      <div class="step"><strong>Krok 2 — SQL</strong>Panel → <code>SQL Editor</code> → wklej pobrany skrypt → <code>Run</code>.</div>
+      <div class="step"><strong>Krok 3 — Klucze</strong><code>Project Settings → API</code> → skopiuj <code>Project URL</code> i <code>anon public key</code>.</div>
+    </div>
+    <input class="cfg-input" id="cfg-url" type="url" placeholder="https://twojprojekt.supabase.co" />
+    <input class="cfg-input" id="cfg-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." />
+    <div class="setup-err" id="setup-err"></div>
+    <div class="row-btns">
+      <button class="btn btn-ghost" id="btn-sql" type="button">⬇ Pobierz SQL</button>
+      <button class="btn btn-primary" id="btn-connect" type="button">Połącz →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ LOGIN ══ -->
+<div class="overlay hidden" id="login-ov">
+  <div class="obox">
+    <div class="brand">ROD <span>Liczniki</span></div>
+    <div class="brand-sub">Zaloguj się</div>
+    <div class="field"><label>E-mail</label><input id="login-email" type="email" placeholder="admin@rod.pl" /></div>
+    <div class="field"><label>Hasło</label><input id="login-pass" type="password" placeholder="••••••••" /></div>
+    <div class="login-err" id="login-err"></div>
+    <button class="btn btn-primary btn-full" id="btn-login" type="button">Zaloguj się</button>
+    <div class="link-sm">Pierwsze logowanie? <a id="lnk-register">Utwórz konto</a></div>
+    <div class="link-xs"><a id="lnk-cfg">Zmień konfigurację</a></div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app" style="display:none">
+  <header>
+    <div class="hbrand">ROD <span>Liczniki</span></div>
+    <div class="hright">
+      <span class="huser" id="hdr-email"></span>
+      <span class="role-badge" id="hdr-role"></span>
+      <button class="btn-help" id="btn-help" title="Pomoc">❓</button>
+      <button class="btn btn-ghost btn-sm" id="btn-logout" type="button">Wyloguj</button>
+    </div>
+  </header>
+  <nav class="tabs">
+    <button class="active" data-tab="odczyty">⚡ Odczyty</button>
+    <button data-tab="rozliczenia">💰 Rozliczenia</button>
+    <button data-tab="ustawienia">⚙️ Ustawienia</button>
+  </nav>
+  <main>
+
+    <!-- ODCZYTY -->
+    <div class="page active" id="tab-odczyty">
+      <div class="season-bar">
+        <label>Sezon:</label>
+        <select id="sel-sezon"><option value="">— wybierz sezon —</option></select>
+        <span class="season-info" id="season-info"></span>
+        <div style="margin-left:auto;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-ghost btn-sm" id="btn-csv-od" type="button">⬇ CSV</button>
+          <button class="btn btn-amber btn-sm admin-only" id="btn-zatwierdz" type="button" disabled>⚡ Zatwierdź sezon</button>
+        </div>
+      </div>
+      <div class="reading-table-wrap">
+        <table class="reading-table">
+          <thead><tr>
+            <th style="width:90px">Nr działki</th><th>Działkowiec</th><th>Nr licznika</th>
+            <th style="width:130px">Poprzedni odczyt</th><th style="width:130px">Nowy stan (kWh)</th>
+            <th style="width:110px">Zużycie (kWh)</th><th style="width:90px">Status</th>
+          </tr></thead>
+          <tbody id="tb-reading"><tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--muted)">Wybierz sezon aby zobaczyć działki</td></tr></tbody>
+        </table>
+      </div>
+      <div class="save-bar">
+        <div class="save-bar-info" id="save-bar-info">Wybierz sezon, a następnie wpisz odczyty</div>
+        <div class="admin-only-block" style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" id="btn-clear-readings" type="button">Wyczyść zmiany</button>
+          <button class="btn btn-primary" id="btn-save-readings" type="button" disabled>💾 Zapisz odczyty</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROZLICZENIA -->
+    <div class="page" id="tab-rozliczenia">
+      <div class="card">
+        <div class="card-hd">
+          <div class="card-hd-left"><h2>Rozliczenia sezonów</h2><p>Historia należności — oznaczaj jako opłacone, eksportuj</p></div>
+          <div class="actions">
+            <button class="btn btn-ghost btn-sm" id="btn-csv-roz" type="button">⬇ CSV</button>
+            <button class="btn btn-ghost btn-sm" id="btn-rtf-roz" type="button">📄 Raport</button>
+            <button class="btn btn-danger btn-sm admin-only" id="btn-del-sezon-roz" type="button">🗑 Usuń rozliczenia sezonu</button>
+          </div>
+        </div>
+        <div class="filters">
+          <input type="search" id="search-roz" placeholder="Szukaj po działce..." />
+          <select id="filter-roz-sezon"><option value="">Wszystkie sezony</option></select>
+          <select id="filter-roz-status">
+            <option value="">Wszystkie statusy</option>
+            <option value="nieopłacone">Nieopłacone</option>
+            <option value="opłacone">Opłacone</option>
+          </select>
+        </div>
+        <div id="roz-summary" style="display:none;margin-bottom:.9rem;gap:1.2rem;flex-wrap:wrap;padding:.7rem 1rem;background:var(--g100);border-radius:var(--rsm);border:1px solid var(--border)"></div>
+        <div class="tw">
+          <table class="mob-cards">
+            <thead><tr>
+              <th>Nr działki</th><th>Działkowiec</th><th>Sezon</th>
+              <th>Odczyt start</th><th>Odczyt koniec</th>
+              <th>Zużycie</th><th>Stawka</th><th>Kwota</th><th>Status</th><th>Akcje</th>
+            </tr></thead>
+            <tbody id="tb-roz"><tr><td colspan="10" style="text-align:center;padding:1.5rem;color:var(--muted)">Ładowanie...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- USTAWIENIA -->
+    <div class="page" id="tab-ustawienia">
+
+      <!-- DZIAŁKI -->
+      <div class="setting-section">
+        <div class="setting-section-hd" data-section="dz">
+          <h3>🌿 Działki i działkowcy</h3>
+          <div style="display:flex;gap:.5rem;align-items:center" onclick="event.stopPropagation()">
+            <span style="font-size:.74rem;color:var(--muted)" id="cnt-dz">0 działek</span>
+            <button class="btn btn-ghost btn-sm admin-only" id="btn-import-csv" type="button">⬆ Importuj CSV</button>
+            <button class="btn btn-primary btn-sm admin-only" id="btn-add-dz" type="button">+ Dodaj</button>
+          </div>
+        </div>
+        <div class="setting-section-body" id="sec-dz">
+          <div style="padding:.6rem .8rem;border-bottom:1px solid var(--border)">
+            <input type="search" id="search-dz" placeholder="Szukaj..." style="width:100%;padding:.42rem .75rem;border:1.5px solid var(--border);border-radius:var(--rsm);font-size:.8rem;outline:none;font-family:'Inter',sans-serif" />
+          </div>
+          <div class="tw" style="border:none">
+            <table class="mob-cards">
+              <thead><tr><th>Nr działki</th><th>Działkowiec</th><th>Telefon</th><th>E-mail</th><th>Licznik</th><th>Legalizacja</th><th class="admin-only">Akcje</th></tr></thead>
+              <tbody id="tb-dz"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- LICZNIKI -->
+      <div class="setting-section">
+        <div class="setting-section-hd" data-section="licz">
+          <h3>🔢 Liczniki</h3>
+          <div style="display:flex;gap:.5rem;align-items:center" onclick="event.stopPropagation()">
+            <span style="font-size:.74rem;color:var(--muted)" id="cnt-licz">0 liczników</span>
+            <button class="btn btn-primary btn-sm admin-only" id="btn-add-licz" type="button">+ Dodaj</button>
+          </div>
+        </div>
+        <div class="setting-section-body" id="sec-licz">
+          <div style="padding:.6rem .8rem;border-bottom:1px solid var(--border)">
+            <select id="filter-licz-status" style="padding:.42rem .75rem;border:1.5px solid var(--border);border-radius:var(--rsm);font-size:.8rem;outline:none;font-family:'Inter',sans-serif;background:#fff">
+              <option value="">Wszystkie liczniki</option><option value="aktywny">Tylko aktywne</option><option value="wymieniony">Tylko wymienione</option>
+            </select>
+          </div>
+          <div class="tw" style="border:none">
+            <table class="mob-cards">
+              <thead><tr><th>Nr licznika</th><th>Działka</th><th>Data montażu</th><th>Legalizacja do</th><th>Status</th><th class="admin-only">Akcje</th></tr></thead>
+              <tbody id="tb-licz"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEZONY -->
+      <div class="setting-section">
+        <div class="setting-section-hd" data-section="sz">
+          <h3>📅 Sezony rozliczeniowe</h3>
+          <div style="display:flex;gap:.5rem;align-items:center" onclick="event.stopPropagation()">
+            <span style="font-size:.74rem;color:var(--muted)" id="cnt-sz">0 sezonów</span>
+            <button class="btn btn-primary btn-sm admin-only" id="btn-add-sz" type="button">+ Dodaj</button>
+          </div>
+        </div>
+        <div class="setting-section-body" id="sec-sz">
+          <div class="tw" style="border:none">
+            <table class="mob-cards">
+              <thead><tr><th>Nazwa</th><th>Data od</th><th>Data do</th><th>Stawka (zł/kWh)</th><th class="admin-only">Akcje</th></tr></thead>
+              <tbody id="tb-sz"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- MODAL: Pomoc -->
+<div class="modal-bd" id="m-help">
+  <div class="modal modal-xl">
+    <h3>❓ Pomoc — jak korzystać z aplikacji</h3>
+    <div class="help-section">
+      <h4>⚡ Zakładka Odczyty — główny ekran</h4>
+      <ol>
+        <li>Wybierz sezon z listy rozwijalnej (np. „Sezon letni 2025").</li>
+        <li>W tabeli zobaczysz wszystkie działki. Kolumna <strong>Poprzedni odczyt</strong> pokazuje ostatni zapisany stan licznika.</li>
+        <li>Wpisz aktualny stan licznika w kolumnie <strong>Nowy stan (kWh)</strong>. Zużycie liczy się automatycznie na żywo.</li>
+        <li>Po wpisaniu wszystkich odczytów kliknij <strong>💾 Zapisz odczyty</strong>.</li>
+        <li>Gdy masz komplet odczytów dla sezonu — kliknij <strong>⚡ Zatwierdź sezon</strong>, sprawdź podgląd i zatwierdź. Rozliczenia pojawią się w zakładce Rozliczenia.</li>
+      </ol>
+      <div class="help-tip">💡 Aplikacja zapamiętuje które odczyty są już zapisane — wiersz zmienia kolor na zielony. Możesz wracać i uzupełniać odczyty etapami.</div>
+    </div>
+    <div class="help-section">
+      <h4>💰 Zakładka Rozliczenia</h4>
+      <p>Po zatwierdzeniu sezonu tutaj pojawią się należności dla każdej działki. Możesz:</p>
+      <ul>
+        <li>Filtrować po sezonie lub statusie płatności</li>
+        <li>Oznaczyć należność jako <strong>opłaconą</strong> przyciskiem ✓</li>
+        <li>Pobrać zestawienie jako <strong>plik CSV</strong> (Excel) lub <strong>Raport RTF</strong> (Word / LibreOffice)</li>
+      </ul>
+      <div class="help-tip">💡 Na górze strony widoczne jest podsumowanie: łączna kwota, ile opłacono, ile pozostało do zapłaty.</div>
+    </div>
+    <div class="help-section">
+      <h4>⚙️ Zakładka Ustawienia</h4>
+      <p>Trzy rozwijane sekcje — kliknij nagłówek żeby rozwinąć:</p>
+      <ul>
+        <li><strong>🌿 Działki i działkowcy</strong> — dodaj, edytuj lub usuń działkę. Możesz też zaimportować dane z pliku CSV.</li>
+        <li><strong>🔢 Liczniki</strong> — przypisz licznik do działki, podaj datę montażu. Legalizacja liczona automatycznie (+10 lat). Wiersze zaznaczone na czerwono lub pomarańczowo oznaczają zbliżający się termin legalizacji.</li>
+        <li><strong>📅 Sezony</strong> — zdefiniuj okresy rozliczeniowe ze stawką zł/kWh. Zwykle 2 sezony w roku (letni i zimowy).</li>
+      </ul>
+    </div>
+    <div class="help-section">
+      <h4>⬆ Import CSV (działki + liczniki)</h4>
+      <p>W sekcji Działki kliknij <strong>⬆ Importuj CSV</strong>. Pobierz szablon, wypełnij w Excelu i wgraj. Format kolumn:</p>
+      <code style="display:block;background:var(--g100);padding:.5rem .8rem;border-radius:var(--rsm);font-family:'JetBrains Mono',monospace;font-size:.75rem;margin:.5rem 0">numer_dzialki;imie;nazwisko;telefon;adres;email;uwagi;numer_licznika;data_montazu</code>
+      <div class="help-tip">💡 Data montażu w formacie RRRR-MM-DD (np. 2019-05-15). Jeśli działka już istnieje — zostanie zaktualizowana, nie zdublowana.</div>
+    </div>
+    <div class="help-section">
+      <h4>🔐 Role użytkowników</h4>
+      <ul>
+        <li><span class="role-badge role-admin" style="display:inline">Admin</span> — pełny dostęp: dodawanie, edycja, usuwanie, zatwierdź sezon.</li>
+        <li><span class="role-badge role-viewer" style="display:inline">Podgląd</span> — tylko odczyt i eksport CSV/RTF. Przyciski edycji są ukryte.</li>
+      </ul>
+      <div class="help-tip">🔒 Role są zarządzane w bazie danych Supabase — w tabeli <strong>admins</strong>. Aby dodać admina wejdź w Supabase → Table Editor → admins → Insert row i wpisz e-mail. Zmiana w pliku HTML nic nie da — decyduje serwer.</div>
+    </div>
+    <div class="mfooter">
+      <button class="btn btn-primary" data-close="m-help" type="button">Zamknij</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Import CSV -->
+<div class="modal-bd" id="m-import">
+  <div class="modal modal-lg">
+    <h3>⬆ Import działek i liczników z CSV</h3>
+    <div class="alert alert-info">
+      Plik CSV — nagłówek ze średnikiem jako separatorem. Kolumny licznika opcjonalne.
+      <code style="font-family:'JetBrains Mono',monospace;font-size:.74rem;display:block;margin-top:.4rem;background:#fff;padding:.3rem .5rem;border-radius:3px;border:1px solid #a0cce8">numer_dzialki;imie;nazwisko;telefon;adres;email;uwagi;numer_licznika;data_montazu</code>
+      <span style="font-size:.74rem">Data montażu: RRRR-MM-DD. Legalizacja = data montażu + 10 lat.</span>
+    </div>
+    <div style="margin-bottom:.8rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-ghost btn-sm" id="btn-dl-template" type="button">⬇ Pobierz szablon</button>
+      <label style="cursor:pointer">
+        <span class="btn btn-secondary btn-sm">📂 Wybierz plik CSV</span>
+        <input type="file" id="import-file" accept=".csv" style="display:none" />
+      </label>
+      <span id="import-filename" style="font-size:.78rem;color:var(--muted)"></span>
+    </div>
+    <div id="import-preview" style="display:none">
+      <div id="import-summary" class="alert" style="margin-bottom:.7rem"></div>
+      <div style="max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--rsm)">
+        <table class="preview-tbl">
+          <thead><tr><th>#</th><th>Nr działki</th><th>Imię Nazwisko</th><th>Telefon</th><th>Nr licznika</th><th>Data mont.</th><th>Status</th></tr></thead>
+          <tbody id="import-preview-tb"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="ferr" id="err-import"></div>
+    <div class="mfooter">
+      <button class="btn btn-ghost" data-close="m-import" type="button">Anuluj</button>
+      <button class="btn btn-primary btn-lg" id="btn-do-import" type="button" style="display:none">⬆ Importuj <span id="import-count"></span> wierszy</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Działka -->
+<div class="modal-bd" id="m-dz">
+  <div class="modal">
+    <h3 id="m-dz-title">Nowa działka</h3>
+    <input type="hidden" id="dz-id" />
+    <div class="fgrid">
+      <div class="fr"><label>Numer działki *</label><input id="dz-nr" placeholder="np. A-12" /></div>
+      <div class="fr"><label>Telefon</label><input id="dz-tel" type="tel" placeholder="600 100 200" /></div>
+      <div class="fr"><label>Imię *</label><input id="dz-imie" placeholder="Jan" /></div>
+      <div class="fr"><label>Nazwisko *</label><input id="dz-nazw" placeholder="Kowalski" /></div>
+    </div>
+    <div class="fr"><label>Adres zamieszkania</label><input id="dz-adres" placeholder="ul. Różana 5, 60-001 Poznań" /></div>
+    <div class="fr"><label>E-mail</label><input id="dz-email" type="email" placeholder="jan@email.pl" /></div>
+    <div class="fr"><label>Uwagi</label><textarea id="dz-uwagi" placeholder="Opcjonalne..."></textarea></div>
+    <div class="ferr" id="err-dz">Wypełnij: numer działki, imię i nazwisko.</div>
+    <div class="mfooter">
+      <button class="btn btn-ghost" data-close="m-dz" type="button">Anuluj</button>
+      <button class="btn btn-primary" id="btn-save-dz" type="button">Zapisz</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Licznik -->
+<div class="modal-bd" id="m-licz">
+  <div class="modal">
+    <h3 id="m-licz-title">Nowy licznik</h3>
+    <input type="hidden" id="licz-id" />
+    <div class="fgrid">
+      <div class="fr"><label>Działka *</label><select id="licz-dz"><option value="">— wybierz —</option></select></div>
+      <div class="fr"><label>Numer licznika *</label><input id="licz-nr" placeholder="np. 12345678" /></div>
+      <div class="fr"><label>Data montażu *</label><input id="licz-montaz" type="date" /></div>
+      <div class="fr"><label>Legalizacja do (auto)</label><input id="licz-legal" readonly /></div>
+      <div class="fr"><label>Status</label>
+        <select id="licz-status"><option value="aktywny">Aktywny</option><option value="wymieniony">Wymieniony</option></select>
+      </div>
+    </div>
+    <div class="fr"><label>Uwagi</label><textarea id="licz-uwagi" placeholder="Opcjonalne..."></textarea></div>
+    <div class="ferr" id="err-licz">Wypełnij wymagane pola.</div>
+    <div class="mfooter">
+      <button class="btn btn-ghost" data-close="m-licz" type="button">Anuluj</button>
+      <button class="btn btn-primary" id="btn-save-licz" type="button">Zapisz</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Sezon -->
+<div class="modal-bd" id="m-sz">
+  <div class="modal">
+    <h3 id="m-sz-title">Nowy sezon</h3>
+    <input type="hidden" id="sz-id" />
+    <div class="fr"><label>Nazwa sezonu *</label><input id="sz-nazwa" placeholder="np. Sezon letni 2025" /></div>
+    <div class="fgrid">
+      <div class="fr"><label>Data od *</label><input id="sz-od" type="date" /></div>
+      <div class="fr"><label>Data do *</label><input id="sz-do" type="date" /></div>
+      <div class="fr"><label>Stawka (zł/kWh) *</label><input id="sz-stawka" type="number" step="0.0001" placeholder="0.7800" /></div>
+    </div>
+    <div class="ferr" id="err-sz">Wypełnij wszystkie pola.</div>
+    <div class="mfooter">
+      <button class="btn btn-ghost" data-close="m-sz" type="button">Anuluj</button>
+      <button class="btn btn-primary" id="btn-save-sz" type="button">Zapisz</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Podgląd rozliczenia -->
+<div class="modal-bd" id="m-preview">
+  <div class="modal modal-lg">
+    <h3>⚡ Podgląd rozliczenia — <span id="preview-sezon-name"></span></h3>
+    <div class="alert alert-info" id="preview-info"></div>
+    <div style="max-height:380px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--rsm)">
+      <table class="preview-tbl">
+        <thead><tr><th>Działka</th><th>Działkowiec</th><th>Odczyt start</th><th>Odczyt koniec</th><th>Zużycie</th><th>Kwota</th></tr></thead>
+        <tbody id="tb-preview"></tbody>
+      </table>
+    </div>
+    <p style="margin-top:.6rem;font-size:.74rem;color:var(--muted)">Szare wiersze zostaną pominięte (brak kompletu odczytów).</p>
+    <div class="ferr" id="err-preview"></div>
+    <div class="mfooter">
+      <button class="btn btn-ghost" data-close="m-preview" type="button">Anuluj</button>
+      <button class="btn btn-amber btn-lg" id="btn-confirm-roz" type="button">✓ Zatwierdź rozliczenie</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+// ══════════════════════════════════════════════
+//  SUPABASE REST
+// ══════════════════════════════════════════════
+let SB_URL='',SB_KEY='',SB_TOKEN='';
+function sbH(){return{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_TOKEN,'Prefer':'return=representation'};}
+async function sbGet(t,q){const r=await fetch(SB_URL+'/rest/v1/'+t+'?'+q,{headers:sbH()});if(!r.ok){const e=await r.json();throw new Error(e.message||r.status);}return r.json();}
+async function sbPost(t,d){const r=await fetch(SB_URL+'/rest/v1/'+t,{method:'POST',headers:sbH(),body:JSON.stringify(d)});if(!r.ok){const e=await r.json();throw new Error(e.message||r.status);}return r.json();}
+async function sbPatch(t,id,d){const r=await fetch(SB_URL+'/rest/v1/'+t+'?id=eq.'+id,{method:'PATCH',headers:sbH(),body:JSON.stringify(d)});if(!r.ok){const e=await r.json();throw new Error(e.message||r.status);}return r.json();}
+async function sbDel(t,id){const r=await fetch(SB_URL+'/rest/v1/'+t+'?id=eq.'+id,{method:'DELETE',headers:sbH()});if(!r.ok){const e=await r.json();throw new Error(e.message||r.status);}return true;}
+
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+let allDz=[],allLicz=[],allOd=[],allSz=[],allRoz=[];
+let currentSezonId=null,pendingReadings={};
+let isAdmin=false;
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+function getCfg(){try{return JSON.parse(localStorage.getItem('rod3_cfg')||'null');}catch{return null;}}
+function initApp(){
+  const cfg=getCfg();
+  if(!cfg){show('setup-ov');return;}
+  SB_URL=cfg.url.replace(/\/$/,'');SB_KEY=cfg.key;
+  const sess=JSON.parse(localStorage.getItem('rod3_sess')||'null');
+  if(sess&&sess.access_token&&sess.expires_at>Date.now()/1000+10){
+    SB_TOKEN=sess.access_token;showApp(sess.user?.email||'');
+  } else {localStorage.removeItem('rod3_sess');hide('setup-ov');show('login-ov');}
+}
+function show(id){document.getElementById(id).classList.remove('hidden');}
+function hide(id){document.getElementById(id).classList.add('hidden');}
+
+async function showApp(email){
+  hide('login-ov');hide('setup-ov');
+  document.getElementById('app').style.display='block';
+  document.getElementById('hdr-email').textContent=email;
+  // Sprawdź rolę po stronie serwera — nie można sfałszować z pliku HTML
+  try{
+    const res=await sbGet('admins','select=email&email=eq.'+encodeURIComponent(email)+'&limit=1');
+    isAdmin=Array.isArray(res)&&res.length>0;
+  }catch(e){
+    isAdmin=false;
+  }
+  if(isAdmin){
+    document.body.classList.add('is-admin');
+    document.getElementById('hdr-role').textContent='Admin';
+    document.getElementById('hdr-role').className='role-badge role-admin';
+  } else {
+    document.getElementById('hdr-role').textContent='Podgląd';
+    document.getElementById('hdr-role').className='role-badge role-viewer';
+  }
+  loadAll();
+}
+
+// ══════════════════════════════════════════════
+//  SETUP
+// ══════════════════════════════════════════════
+document.getElementById('btn-connect').addEventListener('click',async function(){
+  const url=document.getElementById('cfg-url').value.trim();
+  const key=document.getElementById('cfg-key').value.trim();
+  const errEl=document.getElementById('setup-err');errEl.style.display='none';
+  if(!url||!key){setErr(errEl,'Uzupełnij oba pola.');return;}
+  if(!url.startsWith('https://')){setErr(errEl,'URL musi zaczynać się od https://');return;}
+  this.disabled=true;this.innerHTML='<span class="spin"></span>';
+  try{
+    const r=await fetch(url.replace(/\/$/,'')+'/rest/v1/',{headers:{'apikey':key,'Authorization':'Bearer '+key}});
+    if(r.status>=500)throw new Error('Błąd serwera: '+r.status);
+    localStorage.setItem('rod3_cfg',JSON.stringify({url,key}));location.reload();
+  }catch(e){setErr(errEl,e.message||'Nie można połączyć.');this.disabled=false;this.textContent='Połącz →';}
+});
+
+document.getElementById('btn-sql').addEventListener('click',function(){
+  const sql=`-- =====================================================
+--  ROD Liczniki v4 — skrypt SQL
+--  Supabase > SQL Editor > wklej > Run
+-- =====================================================
+create table if not exists dzialki (
+  id uuid primary key default gen_random_uuid(),
+  numer_dzialki text not null unique,
+  imie text not null,
+  nazwisko text not null,
+  telefon text,
+  adres text,
+  email text,
+  uwagi text,
+  created_at timestamptz default now()
+);
+create table if not exists liczniki (
+  id uuid primary key default gen_random_uuid(),
+  dzialka_id uuid not null references dzialki(id) on delete cascade,
+  numer text not null,
+  data_montazu date not null,
+  data_legalizacji date not null,
+  status text not null default 'aktywny',
+  uwagi text,
+  created_at timestamptz default now()
+);
+create table if not exists sezony (
+  id uuid primary key default gen_random_uuid(),
+  nazwa text not null,
+  data_od date not null,
+  data_do date not null,
+  stawka numeric(10,4) not null,
+  created_at timestamptz default now()
+);
+create table if not exists odczyty (
+  id uuid primary key default gen_random_uuid(),
+  licznik_id uuid not null references liczniki(id) on delete cascade,
+  sezon_id uuid references sezony(id) on delete set null,
+  data_odczytu date not null,
+  stan numeric(12,2) not null,
+  uwagi text,
+  created_at timestamptz default now()
+);
+create table if not exists rozliczenia (
+  id uuid primary key default gen_random_uuid(),
+  dzialka_id uuid not null references dzialki(id) on delete cascade,
+  sezon_id uuid not null references sezony(id) on delete cascade,
+  licznik_id uuid references liczniki(id) on delete set null,
+  odczyt_start_id uuid references odczyty(id) on delete set null,
+  odczyt_koniec_id uuid references odczyty(id) on delete set null,
+  stan_start numeric(12,2) not null,
+  stan_koniec numeric(12,2) not null,
+  zuzycie numeric(12,2) not null,
+  stawka numeric(10,4) not null,
+  kwota numeric(10,2) not null,
+  status text not null default 'nieopłacone',
+  uwagi text,
+  created_at timestamptz default now()
+);
+-- Aktualizacja istniejącej bazy (bezpieczne — dodaje kolumny jeśli brak):
+alter table dzialki add column if not exists telefon text;
+alter table dzialki add column if not exists adres text;
+alter table odczyty add column if not exists sezon_id uuid references sezony(id) on delete set null;
+-- =====================================================
+--  TABELA ADMINÓW — tu wpisz e-maile adminów
+-- =====================================================
+create table if not exists admins (
+  email text primary key
+);
+-- Wpisz e-maile adminów:
+-- insert into admins(email) values ('twoj@email.pl');
+-- insert into admins(email) values ('drugi@email.pl');
+-- RLS
+alter table admins      enable row level security;
+alter table dzialki     enable row level security;
+alter table liczniki    enable row level security;
+alter table sezony      enable row level security;
+alter table odczyty     enable row level security;
+alter table rozliczenia enable row level security;
+-- Polityki: każdy zalogowany może CZYTAĆ
+-- Tylko admin (wpis w tabeli admins) może PISAĆ
+do $$ begin
+  -- admins: każdy zalogowany widzi tabelę (żeby aplikacja mogła sprawdzić rolę)
+  if not exists(select 1 from pg_policies where tablename='admins' and policyname='r5_admins_read') then
+    create policy r5_admins_read on admins for select using(auth.role()='authenticated'); end if;
+  -- dzialki
+  if not exists(select 1 from pg_policies where tablename='dzialki' and policyname='r5_dz_read') then
+    create policy r5_dz_read on dzialki for select using(auth.role()='authenticated'); end if;
+  if not exists(select 1 from pg_policies where tablename='dzialki' and policyname='r5_dz_write') then
+    create policy r5_dz_write on dzialki for all using(exists(select 1 from admins where email=auth.email())); end if;
+  -- liczniki
+  if not exists(select 1 from pg_policies where tablename='liczniki' and policyname='r5_licz_read') then
+    create policy r5_licz_read on liczniki for select using(auth.role()='authenticated'); end if;
+  if not exists(select 1 from pg_policies where tablename='liczniki' and policyname='r5_licz_write') then
+    create policy r5_licz_write on liczniki for all using(exists(select 1 from admins where email=auth.email())); end if;
+  -- sezony
+  if not exists(select 1 from pg_policies where tablename='sezony' and policyname='r5_sz_read') then
+    create policy r5_sz_read on sezony for select using(auth.role()='authenticated'); end if;
+  if not exists(select 1 from pg_policies where tablename='sezony' and policyname='r5_sz_write') then
+    create policy r5_sz_write on sezony for all using(exists(select 1 from admins where email=auth.email())); end if;
+  -- odczyty
+  if not exists(select 1 from pg_policies where tablename='odczyty' and policyname='r5_od_read') then
+    create policy r5_od_read on odczyty for select using(auth.role()='authenticated'); end if;
+  if not exists(select 1 from pg_policies where tablename='odczyty' and policyname='r5_od_write') then
+    create policy r5_od_write on odczyty for all using(exists(select 1 from admins where email=auth.email())); end if;
+  -- rozliczenia
+  if not exists(select 1 from pg_policies where tablename='rozliczenia' and policyname='r5_roz_read') then
+    create policy r5_roz_read on rozliczenia for select using(auth.role()='authenticated'); end if;
+  if not exists(select 1 from pg_policies where tablename='rozliczenia' and policyname='r5_roz_write') then
+    create policy r5_roz_write on rozliczenia for all using(exists(select 1 from admins where email=auth.email())); end if;
+end $$;`;
+  dlText(sql,'rod_v4_setup.sql','text/sql');
+});
+
+// ══════════════════════════════════════════════
+//  LOGIN
+// ══════════════════════════════════════════════
+document.getElementById('btn-login').addEventListener('click',async function(){
+  const email=document.getElementById('login-email').value.trim();
+  const pass=document.getElementById('login-pass').value;
+  const errEl=document.getElementById('login-err');errEl.style.display='none';
+  if(!email||!pass){setErr(errEl,'Podaj e-mail i hasło.');return;}
+  this.disabled=true;this.innerHTML='<span class="spin"></span>';
+  try{
+    const r=await fetch(SB_URL+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY},body:JSON.stringify({email,password:pass})});
+    const d=await r.json();if(!r.ok)throw new Error(d.error_description||'Błąd logowania');
+    SB_TOKEN=d.access_token;
+    localStorage.setItem('rod3_sess',JSON.stringify({access_token:d.access_token,expires_at:Math.floor(Date.now()/1000)+(d.expires_in||3600),user:d.user}));
+    showApp(d.user?.email||'');
+  }catch(e){setErr(errEl,e.message);this.disabled=false;this.textContent='Zaloguj się';}
+});
+document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-login').click();});
+document.getElementById('lnk-register').addEventListener('click',async function(){
+  const email=document.getElementById('login-email').value.trim();
+  const pass=document.getElementById('login-pass').value;
+  const errEl=document.getElementById('login-err');errEl.style.display='none';
+  if(!email||pass.length<6){setErr(errEl,'Podaj e-mail i hasło min. 6 znaków.');return;}
+  try{
+    const r=await fetch(SB_URL+'/auth/v1/signup',{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY},body:JSON.stringify({email,password:pass})});
+    const d=await r.json();if(!r.ok)throw new Error(d.error_description||'Błąd rejestracji');
+    toast('Konto utworzone! Zaloguj się.','ok');
+  }catch(e){setErr(errEl,e.message);}
+});
+document.getElementById('lnk-cfg').addEventListener('click',()=>{localStorage.removeItem('rod3_cfg');localStorage.removeItem('rod3_sess');location.reload();});
+document.getElementById('btn-logout').addEventListener('click',()=>{localStorage.removeItem('rod3_sess');location.reload();});
+
+// ══════════════════════════════════════════════
+//  TABS
+// ══════════════════════════════════════════════
+document.querySelectorAll('nav.tabs button').forEach(btn=>{
+  btn.addEventListener('click',function(){
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    this.classList.add('active');
+    document.getElementById('tab-'+this.dataset.tab).classList.add('active');
+  });
+});
+
+// ══════════════════════════════════════════════
+//  SETTINGS ACCORDION
+// ══════════════════════════════════════════════
+document.querySelectorAll('.setting-section-hd').forEach(hd=>{
+  hd.addEventListener('click',function(){
+    document.getElementById('sec-'+this.dataset.section).classList.toggle('open');
+  });
+});
+
+// ══════════════════════════════════════════════
+//  HELP
+// ══════════════════════════════════════════════
+document.getElementById('btn-help').addEventListener('click',()=>openM('m-help'));
+
+// ══════════════════════════════════════════════
+//  MODAL HELPERS
+// ══════════════════════════════════════════════
+function openM(id){document.getElementById(id).classList.add('open');}
+function closeM(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-bd').forEach(bd=>bd.addEventListener('click',e=>{if(e.target===bd)bd.classList.remove('open');}));
+document.querySelectorAll('[data-close]').forEach(btn=>btn.addEventListener('click',()=>closeM(btn.dataset.close)));
+
+// ══════════════════════════════════════════════
+//  LOAD
+// ══════════════════════════════════════════════
+async function loadAll(){await Promise.all([loadDz(),loadLicz(),loadSz(),loadOd(),loadRoz()]);}
+async function loadDz(){allDz=await sbGet('dzialki','select=*&order=numer_dzialki.asc')||[];renderDz();populateLiczDzSel();}
+async function loadLicz(){allLicz=await sbGet('liczniki','select=*,dzialki(numer_dzialki,imie,nazwisko)&order=created_at.desc')||[];renderLicz();document.getElementById('cnt-licz').textContent=allLicz.filter(l=>l.status==='aktywny').length+' aktywnych';}
+async function loadSz(){allSz=await sbGet('sezony','select=*&order=data_od.desc')||[];renderSz();populateSzSels();}
+async function loadOd(){allOd=await sbGet('odczyty','select=*,liczniki(numer,dzialka_id,dzialki(numer_dzialki,imie,nazwisko))&order=data_odczytu.desc')||[];}
+async function loadRoz(){allRoz=await sbGet('rozliczenia','select=*,dzialki(numer_dzialki,imie,nazwisko),sezony(nazwa,stawka)&order=created_at.desc')||[];renderRoz();renderRozSummary();}
+
+// ══════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════
+function x(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmtD(s){if(!s)return '—';return new Date(s+'T12:00:00').toLocaleDateString('pl-PL');}
+function fmt(n,dec=2){if(n==null||n===''||isNaN(Number(n)))return '—';return Number(n).toLocaleString('pl-PL',{minimumFractionDigits:dec,maximumFractionDigits:dec});}
+function natural(s){return String(s||'').replace(/(\d+)/g,n=>n.padStart(10,'0')).toLowerCase();}
+function setErr(el,msg){el.textContent=msg;el.style.display='block';}
+let _tt;
+function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='show'+(type?' '+type:'');clearTimeout(_tt);_tt=setTimeout(()=>t.className='',3800);}
+function dlText(c,f,m='text/plain'){const a=document.createElement('a');a.href='data:'+m+';charset=utf-8,'+encodeURIComponent(c);a.download=f;document.body.appendChild(a);a.click();document.body.removeChild(a);}
+function dlCsv(f,rows){dlText('\uFEFF'+rows.map(r=>r.map(v=>{const s=String(v??'');return(s.includes(';')||s.includes('"'))?'"'+s.replace(/"/g,'""')+'"':s;}).join(';')).join('\n'),f,'text/csv');}
+function dniDo(d){if(!d)return null;const t=new Date(d+'T12:00:00'),n=new Date();n.setHours(0,0,0,0);return Math.round((t-n)/86400000);}
+function legalBadge(d){
+  const dni=dniDo(d);if(dni===null)return '—';const label=fmtD(d);
+  if(dni<0)return `<span class="badge b-red">⛔ ${label}</span>`;
+  if(dni<=30)return `<span class="badge b-red">⚠ ${label} (${dni}d)</span>`;
+  if(dni<=90)return `<span class="badge b-amber">⏳ ${label} (${dni}d)</span>`;
+  return `<span class="badge b-green">${label}</span>`;
+}
+function legalRowCls(d){const dni=dniDo(d);if(dni===null||dni>90)return '';return dni<=30?'row-alert':'row-warn';}
+function populateLiczDzSel(){
+  const sel=document.getElementById('licz-dz');const cur=sel.value;
+  sel.innerHTML='<option value="">— wybierz działkę —</option>'+[...allDz].sort((a,b)=>natural(a.numer_dzialki)<natural(b.numer_dzialki)?-1:1).map(d=>`<option value="${d.id}">${x(d.numer_dzialki)} — ${x(d.imie)} ${x(d.nazwisko)}</option>`).join('');
+  if(cur)sel.value=cur;
+}
+function populateSzSels(){
+  ['sel-sezon','filter-roz-sezon'].forEach(sid=>{
+    const sel=document.getElementById(sid);const cur=sel.value;
+    const pfx=sid==='filter-roz-sezon'?'<option value="">Wszystkie sezony</option>':'<option value="">— wybierz sezon —</option>';
+    sel.innerHTML=pfx+allSz.map(s=>`<option value="${s.id}">${x(s.nazwa)}</option>`).join('');
+    if(cur)sel.value=cur;
+  });
+}
+
+// ══════════════════════════════════════════════
+//  ODCZYTY
+// ══════════════════════════════════════════════
+document.getElementById('sel-sezon').addEventListener('change',function(){
+  currentSezonId=this.value||null;pendingReadings={};
+  renderReadingTable();updateSaveBar();
+  const sz=allSz.find(s=>s.id===currentSezonId);
+  if(sz){
+    document.getElementById('season-info').innerHTML=`<strong>${fmtD(sz.data_od)} — ${fmtD(sz.data_do)}</strong> &nbsp;·&nbsp; stawka: <strong>${fmt(sz.stawka,4)} zł/kWh</strong>`;
+    if(isAdmin)document.getElementById('btn-zatwierdz').disabled=false;
+  } else {
+    document.getElementById('season-info').textContent='';
+    document.getElementById('btn-zatwierdz').disabled=true;
+  }
+});
+
+function getSeasonReadings(sezonId){
+  const map={};
+  allOd.filter(o=>o.sezon_id===sezonId).forEach(o=>{if(!map[o.licznik_id]||o.data_odczytu>map[o.licznik_id].data_odczytu)map[o.licznik_id]=o;});
+  return map;
+}
+function getPrevOdczyt(licznikId,sezonId){
+  const sz=allSz.find(s=>s.id===sezonId);if(!sz)return null;
+  return allOd.filter(o=>o.licznik_id===licznikId&&o.data_odczytu<sz.data_od).sort((a,b)=>b.data_odczytu.localeCompare(a.data_odczytu))[0]||null;
+}
+
+function renderReadingTable(){
+  const tb=document.getElementById('tb-reading');
+  if(!currentSezonId){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--muted)">Wybierz sezon aby zobaczyć działki</td></tr>';return;}
+  const sorted=[...allDz].sort((a,b)=>natural(a.numer_dzialki)<natural(b.numer_dzialki)?-1:1);
+  if(!sorted.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--muted)">Brak działek. Dodaj działki w Ustawieniach.</td></tr>';return;}
+  const seasonReadings=getSeasonReadings(currentSezonId);
+  tb.innerHTML=sorted.map(dz=>{
+    const licz=allLicz.find(l=>l.dzialka_id===dz.id&&l.status==='aktywny');
+    if(!licz) return `<tr><td><strong>${x(dz.numer_dzialki)}</strong></td><td>${x(dz.imie)} ${x(dz.nazwisko)}</td><td colspan="5" style="color:var(--muted);font-size:.76rem">⚠ Brak aktywnego licznika</td></tr>`;
+    const existOd=seasonReadings[licz.id]||null;
+    const prevOd=getPrevOdczyt(licz.id,currentSezonId);
+    const pending=pendingReadings[dz.id];
+    const displayStan=pending?.stan||(existOd?String(existOd.stan):'');
+    let zuzycie='—';
+    const stanVal=parseFloat(pending?.stan||existOd?.stan);
+    if(!isNaN(stanVal)&&prevOd){
+      const z=stanVal-prevOd.stan;
+      zuzycie=`<span class="${z>=0?'zuzycie-pos':'zuzycie-neg'}">${fmt(z)}</span>`;
+    }
+    let badge;
+    if(pending) badge='<span class="reading-status rs-changed">✏ zmieniony</span>';
+    else if(existOd) badge='<span class="reading-status rs-done">✓ zapisany</span>';
+    else badge='<span class="reading-status rs-empty">— brak</span>';
+    const inputDisabled=isAdmin?'':'disabled';
+    return `<tr class="${existOd&&!pending?'has-reading':''}">
+      <td data-nr="${x(dz.numer_dzialki)}" data-os="${x(dz.imie)} ${x(dz.nazwisko)}"><strong>${x(dz.numer_dzialki)}</strong></td>
+      <td data-label="Działkowiec">${x(dz.imie)} ${x(dz.nazwisko)}</td>
+      <td data-label="Nr licznika" class="mono">${x(licz.numer)}</td>
+      <td data-label="Poprzedni odczyt" class="mono">${prevOd?fmt(prevOd.stan)+' kWh <small style="color:var(--muted)">('+fmtD(prevOd.data_odczytu)+')</small>':'<span style="color:var(--muted);font-size:.75rem">brak</span>'}</td>
+      <td data-label="Nowy stan (kWh)"><input type="number" step="0.01" min="0" class="reading-input${pending?' changed':''}" data-dz="${dz.id}" data-licz="${licz.id}" data-prev="${prevOd?prevOd.stan:''}" value="${x(displayStan)}" ${inputDisabled} /></td>
+      <td data-label="Zużycie" class="zuzycie-td">${zuzycie}</td>
+      <td data-label="Status">${badge}</td>
+    </tr>`;
+  }).join('');
+  if(isAdmin){
+    tb.querySelectorAll('.reading-input').forEach(inp=>{
+      inp.addEventListener('input',function(){
+        const dzId=this.dataset.dz,liczId=this.dataset.licz,val=this.value.trim();
+        if(val===''){delete pendingReadings[dzId];this.classList.remove('changed');}
+        else{pendingReadings[dzId]={licznikId:liczId,stan:val};this.classList.add('changed');}
+        const row=this.closest('tr');
+        const zCell=row.querySelector('.zuzycie-td');
+        const prevVal=parseFloat(this.dataset.prev);
+        if(zCell){
+          if(val&&!isNaN(prevVal)){
+            const z=parseFloat(val)-prevVal;
+            zCell.innerHTML=`<span class="${z>=0?'zuzycie-pos':'zuzycie-neg'}">${fmt(z)}</span>`;
+          } else {zCell.innerHTML='—';}
+        }
+        updateSaveBar();
+      });
+    });
+  }
+}
+
+function updateSaveBar(){
+  const count=Object.keys(pendingReadings).length;
+  const info=document.getElementById('save-bar-info');
+  const saveBtn=document.getElementById('btn-save-readings');
+  if(!currentSezonId){info.textContent='Wybierz sezon, a następnie wpisz odczyty';saveBtn.disabled=true;return;}
+  if(count===0){info.textContent='Wpisz stany liczników w tabeli';saveBtn.disabled=true;}
+  else{info.innerHTML=`Masz <strong>${count}</strong> niezapisanych odczytów`;saveBtn.disabled=false;}
+}
+
+document.getElementById('btn-save-readings').addEventListener('click',async function(){
+  if(!isAdmin||!currentSezonId)return;
+  const items=Object.entries(pendingReadings);if(!items.length)return;
+  const sz=allSz.find(s=>s.id===currentSezonId);if(!sz)return;
+  this.disabled=true;this.innerHTML='<span class="spin"></span> Zapisuję...';
+  const today=new Date().toISOString().split('T')[0];
+  const dateToUse=today>=sz.data_od&&today<=sz.data_do?today:sz.data_do;
+  let saved=0,errors=0;
+  for(const [dzId,{licznikId,stan}] of items){
+    const stanVal=parseFloat(stan);if(isNaN(stanVal)){errors++;continue;}
+    try{await sbPost('odczyty',{licznik_id:licznikId,sezon_id:currentSezonId,data_odczytu:dateToUse,stan:stanVal});saved++;}
+    catch(e){errors++;console.error(e);}
+  }
+  pendingReadings={};await loadOd();renderReadingTable();updateSaveBar();
+  this.disabled=false;this.innerHTML='💾 Zapisz odczyty';
+  toast(errors===0?`Zapisano ${saved} odczytów.`:`Zapisano ${saved}, błędy: ${errors}.`,errors?'err':'ok');
+});
+
+document.getElementById('btn-clear-readings').addEventListener('click',()=>{pendingReadings={};renderReadingTable();updateSaveBar();});
+
+document.getElementById('btn-csv-od').addEventListener('click',()=>{
+  if(!currentSezonId){toast('Wybierz sezon.');return;}
+  const sz=allSz.find(s=>s.id===currentSezonId);
+  const sr=getSeasonReadings(currentSezonId);
+  const rows=[['Nr działki','Imię','Nazwisko','Nr licznika','Stan (kWh)','Data odczytu']];
+  [...allDz].sort((a,b)=>natural(a.numer_dzialki)<natural(b.numer_dzialki)?-1:1).forEach(dz=>{
+    const licz=allLicz.find(l=>l.dzialka_id===dz.id&&l.status==='aktywny');
+    const od=licz?sr[licz.id]:null;
+    rows.push([dz.numer_dzialki,dz.imie,dz.nazwisko,licz?licz.numer:'',od?od.stan:'',od?od.data_odczytu:'']);
+  });
+  dlCsv(`odczyty_${sz.nazwa.replace(/\s/g,'_')}.csv`,rows);
+});
+
+// ZATWIERDŹ SEZON
+document.getElementById('btn-zatwierdz').addEventListener('click',async function(){
+  if(!isAdmin||!currentSezonId)return;
+  const sz=allSz.find(s=>s.id===currentSezonId);if(!sz)return;
+  if(allRoz.filter(r=>r.sezon_id===currentSezonId).length>0){
+    toast('Ten sezon ma już rozliczenia. Usuń je najpierw przyciskiem "🗑 Usuń rozliczenia sezonu" w zakładce Rozliczenia.','err');return;
+  }
+  const sorted=[...allDz].sort((a,b)=>natural(a.numer_dzialki)<natural(b.numer_dzialki)?-1:1);
+  const preview=[];
+  for(const dz of sorted){
+    const licz=allLicz.find(l=>l.dzialka_id===dz.id&&l.status==='aktywny');
+    if(!licz){preview.push({dz,ok:false,reason:'Brak aktywnego licznika'});continue;}
+    const odArr=allOd.filter(o=>o.licznik_id===licz.id&&o.sezon_id===currentSezonId).sort((a,b)=>a.data_odczytu.localeCompare(b.data_odczytu));
+    if(!odArr.length){preview.push({dz,licz,ok:false,reason:'Brak odczytu w tym sezonie'});continue;}
+    const end=odArr[odArr.length-1];
+    let startOd=odArr.length>1?odArr[0]:getPrevOdczyt(licz.id,currentSezonId);
+    if(!startOd){preview.push({dz,licz,ok:false,reason:'Brak odczytu startowego'});continue;}
+    const zuzycie=+(end.stan-startOd.stan).toFixed(2);
+    const kwota=+(zuzycie*sz.stawka).toFixed(2);
+    preview.push({dz,licz,ok:true,startOd,endOd:end,zuzycie,kwota,sz});
+  }
+  const canRoz=preview.filter(p=>p.ok);
+  document.getElementById('preview-sezon-name').textContent=sz.nazwa;
+  document.getElementById('preview-info').textContent=`Gotowe do rozliczenia: ${canRoz.length} działek. Pominięte: ${preview.filter(p=>!p.ok).length}.`;
+  document.getElementById('tb-preview').innerHTML=[...canRoz,...preview.filter(p=>!p.ok)].map(p=>p.ok?
+    `<tr><td><strong>${x(p.dz.numer_dzialki)}</strong></td><td>${x(p.dz.imie)} ${x(p.dz.nazwisko)}</td>
+    <td class="mono">${fmt(p.startOd.stan)} kWh <small style="color:var(--muted)">(${fmtD(p.startOd.data_odczytu)})</small></td>
+    <td class="mono">${fmt(p.endOd.stan)} kWh <small style="color:var(--muted)">(${fmtD(p.endOd.data_odczytu)})</small></td>
+    <td class="mono pok">${fmt(p.zuzycie)} kWh</td><td class="mono"><strong class="pok">${fmt(p.kwota)} zł</strong></td></tr>`:
+    `<tr class="skip"><td><strong>${x(p.dz.numer_dzialki)}</strong></td><td>${x(p.dz.imie)} ${x(p.dz.nazwisko)}</td><td colspan="4">${p.reason}</td></tr>`
+  ).join('');
+  document.getElementById('err-preview').style.display='none';
+  document.getElementById('btn-confirm-roz').dataset.preview=JSON.stringify(canRoz.map(p=>({
+    dzialka_id:p.dz.id,sezon_id:currentSezonId,licznik_id:p.licz.id,
+    odczyt_start_id:p.startOd.id,odczyt_koniec_id:p.endOd.id,
+    stan_start:p.startOd.stan,stan_koniec:p.endOd.stan,
+    zuzycie:p.zuzycie,stawka:sz.stawka,kwota:p.kwota,status:'nieopłacone'
+  })));
+  openM('m-preview');
+});
+
+document.getElementById('btn-confirm-roz').addEventListener('click',async function(){
+  if(!isAdmin)return;
+  const items=JSON.parse(this.dataset.preview||'[]');if(!items.length)return;
+  this.disabled=true;this.innerHTML='<span class="spin"></span> Zapisuję...';
+  const errEl=document.getElementById('err-preview');errEl.style.display='none';
+  try{
+    for(const item of items)await sbPost('rozliczenia',item);
+    closeM('m-preview');
+    toast(`Rozliczono ${items.length} działek. Łącznie: ${fmt(items.reduce((s,i)=>s+i.kwota,0))} zł`,'ok');
+    await loadRoz();document.querySelector('[data-tab="rozliczenia"]').click();
+  }catch(e){setErr(errEl,'Błąd: '+e.message);}
+  this.disabled=false;this.innerHTML='✓ Zatwierdź rozliczenie';
+});
+
+// ══════════════════════════════════════════════
+//  ROZLICZENIA
+// ══════════════════════════════════════════════
+function getFilteredRoz(){
+  const q=document.getElementById('search-roz').value.toLowerCase();
+  const sf=document.getElementById('filter-roz-sezon').value;
+  const ss=document.getElementById('filter-roz-status').value;
+  return allRoz.filter(r=>{
+    const dz=r.dzialki||{};
+    return(!q||dz.numer_dzialki?.toLowerCase().includes(q)||dz.nazwisko?.toLowerCase().includes(q))&&(!sf||r.sezon_id===sf)&&(!ss||r.status===ss);
+  });
+}
+function renderRoz(){
+  const tb=document.getElementById('tb-roz');const rows=getFilteredRoz();
+  if(!rows.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--muted)">Brak rozliczeń</td></tr>';return;}
+  const bm={'opłacone':'b-green','nieopłacone':'b-red','częściowe':'b-amber'};
+  tb.innerHTML=rows.map(r=>{
+    const dz=r.dzialki||{};const sz=r.sezony||{};
+    return `<tr>
+      <td><strong>${x(dz.numer_dzialki||'—')}</strong></td>
+      <td data-label="Działkowiec">${x(dz.imie||'')} ${x(dz.nazwisko||'')}</td>
+      <td data-label="Sezon">${x(sz.nazwa||'—')}</td>
+      <td data-label="Odczyt start" class="mono">${fmt(r.stan_start)} kWh</td>
+      <td data-label="Odczyt koniec" class="mono">${fmt(r.stan_koniec)} kWh</td>
+      <td data-label="Zużycie" class="mono"><strong>${fmt(r.zuzycie)} kWh</strong></td>
+      <td data-label="Kwota" class="mono"><strong>${fmt(r.kwota)} zł</strong></td>
+      <td data-label="Status"><span class="badge ${bm[r.status]||'b-gray'}">${x(r.status)}</span></td>
+      <td class="no-label" style="display:flex;gap:.3rem;flex-wrap:wrap">
+        ${isAdmin&&r.status!=='opłacone'?`<button class="btn btn-secondary btn-sm" data-paid="${r.id}" type="button">✓ Opłać</button>`:''}
+        ${isAdmin&&r.status==='opłacone'?`<button class="btn btn-ghost btn-sm" data-unpaid="${r.id}" type="button">↩ Cofnij</button>`:''}
+        ${isAdmin?`<button class="btn btn-danger btn-sm" data-del="${r.id}" type="button">🗑</button>`:''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+function renderRozSummary(){
+  const rows=getFilteredRoz();const el=document.getElementById('roz-summary');
+  if(!rows.length){el.style.display='none';return;}
+  const total=rows.reduce((s,r)=>s+Number(r.kwota||0),0);
+  const paid=rows.filter(r=>r.status==='opłacone').reduce((s,r)=>s+Number(r.kwota||0),0);
+  el.style.display='flex';
+  el.innerHTML=`<span style="font-size:.78rem"><span style="color:var(--muted)">Razem:</span> <strong>${fmt(total)} zł</strong> (${rows.length} działek)</span>
+    <span style="font-size:.78rem"><span style="color:#1a6633">Opłacone:</span> <strong style="color:#1a6633">${fmt(paid)} zł</strong></span>
+    <span style="font-size:.78rem"><span style="color:var(--red)">Do zapłaty:</span> <strong style="color:var(--red)">${fmt(total-paid)} zł</strong></span>`;
+}
+['search-roz','filter-roz-sezon','filter-roz-status'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',()=>{renderRoz();renderRozSummary();});
+  document.getElementById(id).addEventListener('change',()=>{renderRoz();renderRozSummary();});
+});
+document.getElementById('tb-roz').addEventListener('click',async function(e){
+  const paidBtn=e.target.closest('[data-paid]');const unpaidBtn=e.target.closest('[data-unpaid]');const delBtn=e.target.closest('[data-del]');
+  if(!isAdmin)return;
+  if(paidBtn){try{await sbPatch('rozliczenia',paidBtn.dataset.paid,{status:'opłacone'});toast('Oznaczono jako opłacone ✓','ok');await loadRoz();}catch(e){toast('Błąd: '+e.message,'err');}}
+  if(unpaidBtn){try{await sbPatch('rozliczenia',unpaidBtn.dataset.unpaid,{status:'nieopłacone'});toast('Status cofnięty — z powrotem nieopłacone.','ok');await loadRoz();}catch(e){toast('Błąd: '+e.message,'err');}}
+  if(delBtn){if(!confirm('Usunąć to rozliczenie?'))return;try{await sbDel('rozliczenia',delBtn.dataset.del);toast('Usunięto.');await loadRoz();}catch(e){toast('Błąd: '+e.message,'err');}}
+});
+document.getElementById('btn-del-sezon-roz').addEventListener('click',async function(){
+  if(!isAdmin)return;
+  const sf=document.getElementById('filter-roz-sezon').value;
+  if(!sf){toast('Najpierw wybierz sezon w filtrze.','err');return;}
+  const sz=allSz.find(s=>s.id===sf);const count=allRoz.filter(r=>r.sezon_id===sf).length;
+  if(!count){toast('Brak rozliczeń dla tego sezonu.');return;}
+  if(!confirm(`Usunąć wszystkie ${count} rozliczenia sezonu "${sz?.nazwa||''}"?\n\nOdczyty pozostaną.`))return;
+  this.disabled=true;this.innerHTML='<span class="spin"></span>';
+  try{
+    for(const id of allRoz.filter(r=>r.sezon_id===sf).map(r=>r.id))await sbDel('rozliczenia',id);
+    toast(`Usunięto ${count} rozliczeń.`,'ok');await loadRoz();
+  }catch(e){toast('Błąd: '+e.message,'err');}
+  this.disabled=false;this.innerHTML='🗑 Usuń rozliczenia sezonu';
+});
+document.getElementById('btn-csv-roz').addEventListener('click',()=>{
+  const rows=getFilteredRoz();
+  dlCsv('rozliczenia.csv',[
+    ['Nr działki','Imię','Nazwisko','Sezon','Odczyt start (kWh)','Odczyt koniec (kWh)','Zużycie (kWh)','Stawka (zł/kWh)','Kwota (zł)','Status'],
+    ...rows.map(r=>{const dz=r.dzialki||{};const sz=r.sezony||{};return[dz.numer_dzialki||'',dz.imie||'',dz.nazwisko||'',sz.nazwa||'',r.stan_start??'',r.stan_koniec??'',r.zuzycie??'',r.stawka??'',r.kwota??'',r.status||''];})
+  ]);
+});
+document.getElementById('btn-rtf-roz').addEventListener('click',()=>{
+  const rows=getFilteredRoz();
+  const sf=document.getElementById('filter-roz-sezon').value;
+  const sz=allSz.find(s=>s.id===sf);
+  genRtf('Rozliczenia energii elektrycznej ROD',sz?sz.nazwa:'Wszystkie sezony',
+    ['Nr dzia\\u322ki','Dzia\\u322kowiec','Sezon','Zu\\u380ycie kWh','Kwota z\\u322','Status'],
+    [900,1800,1600,1100,1000,1100],
+    rows.map(r=>{const dz=r.dzialki||{};const sz2=r.sezony||{};return[dz.numer_dzialki||'—',(dz.imie||'')+' '+(dz.nazwisko||''),sz2.nazwa||'—',String(r.zuzycie??'—'),fmt(r.kwota),r.status||''];})
+  );
+});
+
+// ══════════════════════════════════════════════
+//  DZIAŁKI
+// ══════════════════════════════════════════════
+function renderDz(){
+  const q=document.getElementById('search-dz').value.toLowerCase();
+  const tb=document.getElementById('tb-dz');
+  const rows=[...allDz].filter(d=>!q||d.numer_dzialki?.toLowerCase().includes(q)||d.nazwisko?.toLowerCase().includes(q)||d.imie?.toLowerCase().includes(q)).sort((a,b)=>natural(a.numer_dzialki)<natural(b.numer_dzialki)?-1:1);
+  document.getElementById('cnt-dz').textContent=allDz.length+' działek';
+  if(!rows.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--muted)">Brak działek</td></tr>';return;}
+  tb.innerHTML=rows.map(d=>{
+    const licz=allLicz.find(l=>l.dzialka_id===d.id&&l.status==='aktywny');
+    return `<tr>
+      <td><strong>${x(d.numer_dzialki)}</strong></td>
+      <td data-label="Działkowiec">${x(d.imie)} ${x(d.nazwisko)}${d.adres?`<br><span style="font-size:.72rem;color:var(--muted)">${x(d.adres)}</span>`:''}
+      </td>
+      <td data-label="Telefon" style="font-size:.78rem">${d.telefon?x(d.telefon):'—'}</td>
+      <td data-label="E-mail" style="font-size:.78rem">${d.email?x(d.email):'—'}</td>
+      <td data-label="Licznik" class="mono" style="font-size:.78rem">${licz?x(licz.numer):'<span style="color:var(--muted)">brak</span>'}</td>
+      <td data-label="Legalizacja">${licz?legalBadge(licz.data_legalizacji):'—'}</td>
+      ${isAdmin?`<td class="no-label" style="display:flex;gap:.3rem">
+        <button class="btn btn-ghost btn-sm" data-edit-dz="${d.id}" type="button">✏️ Edytuj</button>
+        <button class="btn btn-danger btn-sm" data-del-dz="${d.id}" type="button">🗑</button>
+      </td>`:'<td></td>'}
+    </tr>`;
+  }).join('');
+}
+document.getElementById('search-dz').addEventListener('input',renderDz);
+document.getElementById('btn-add-dz').addEventListener('click',()=>{
+  document.getElementById('dz-id').value='';
+  document.getElementById('m-dz-title').textContent='Nowa działka';
+  ['dz-nr','dz-imie','dz-nazw','dz-tel','dz-adres','dz-email','dz-uwagi'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('err-dz').style.display='none';openM('m-dz');
+});
+document.getElementById('tb-dz').addEventListener('click',async function(e){
+  if(!isAdmin)return;
+  const editBtn=e.target.closest('[data-edit-dz]');const delBtn=e.target.closest('[data-del-dz]');
+  if(editBtn){
+    const d=allDz.find(d=>d.id===editBtn.dataset.editDz);if(!d)return;
+    document.getElementById('dz-id').value=d.id;
+    document.getElementById('m-dz-title').textContent='Edytuj działkę';
+    document.getElementById('dz-nr').value=d.numer_dzialki||'';
+    document.getElementById('dz-imie').value=d.imie||'';
+    document.getElementById('dz-nazw').value=d.nazwisko||'';
+    document.getElementById('dz-tel').value=d.telefon||'';
+    document.getElementById('dz-adres').value=d.adres||'';
+    document.getElementById('dz-email').value=d.email||'';
+    document.getElementById('dz-uwagi').value=d.uwagi||'';
+    document.getElementById('err-dz').style.display='none';openM('m-dz');
+  }
+  if(delBtn){
+    if(!confirm('Usunąć działkę wraz z licznikiem, odczytami i rozliczeniami?'))return;
+    try{await sbDel('dzialki',delBtn.dataset.delDz);toast('Działka usunięta.');await Promise.all([loadDz(),loadLicz(),loadOd(),loadRoz()]);renderReadingTable();}
+    catch(e){toast('Błąd: '+e.message,'err');}
+  }
+});
+document.getElementById('btn-save-dz').addEventListener('click',async function(){
+  if(!isAdmin)return;
+  const id=document.getElementById('dz-id').value;
+  const errEl=document.getElementById('err-dz');errEl.style.display='none';
+  const p={numer_dzialki:document.getElementById('dz-nr').value.trim(),imie:document.getElementById('dz-imie').value.trim(),nazwisko:document.getElementById('dz-nazw').value.trim(),telefon:document.getElementById('dz-tel').value.trim()||null,adres:document.getElementById('dz-adres').value.trim()||null,email:document.getElementById('dz-email').value.trim()||null,uwagi:document.getElementById('dz-uwagi').value.trim()||null};
+  if(!p.numer_dzialki||!p.imie||!p.nazwisko){errEl.style.display='block';return;}
+  this.disabled=true;
+  try{
+    if(id)await sbPatch('dzialki',id,p);else await sbPost('dzialki',p);
+    closeM('m-dz');toast(id?'Działka zaktualizowana.':'Działka dodana.','ok');await loadDz();renderReadingTable();
+  }catch(e){setErr(errEl,e.message);}
+  this.disabled=false;
+});
+
+// ══════════════════════════════════════════════
+//  LICZNIKI
+// ══════════════════════════════════════════════
+function renderLicz(){
+  const sf=document.getElementById('filter-licz-status').value;
+  const tb=document.getElementById('tb-licz');
+  const rows=allLicz.filter(l=>!sf||l.status===sf);
+  document.getElementById('cnt-licz').textContent=allLicz.filter(l=>l.status==='aktywny').length+' aktywnych';
+  if(!rows.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--muted)">Brak liczników</td></tr>';return;}
+  const bs={'aktywny':'b-green','wymieniony':'b-gray'};
+  tb.innerHTML=rows.map(l=>{
+    const dz=l.dzialki||{};
+    return `<tr class="${legalRowCls(l.data_legalizacji)}">
+      <td class="mono"><strong>${x(l.numer)}</strong></td>
+      <td data-label="Działka"><strong>${x(dz.numer_dzialki||'—')}</strong><br><span style="font-size:.74rem;color:var(--muted)">${x(dz.imie||'')} ${x(dz.nazwisko||'')}</span></td>
+      <td data-label="Data montażu" class="mono">${fmtD(l.data_montazu)}</td>
+      <td data-label="Legalizacja do">${legalBadge(l.data_legalizacji)}</td>
+      <td data-label="Status"><span class="badge ${bs[l.status]||'b-gray'}">${x(l.status)}</span></td>
+      ${isAdmin?`<td class="no-label" style="display:flex;gap:.3rem">
+        <button class="btn btn-ghost btn-sm" data-edit-licz="${l.id}" type="button">✏️ Edytuj</button>
+        <button class="btn btn-danger btn-sm" data-del-licz="${l.id}" type="button">🗑</button>
+      </td>`:'<td></td>'}
+    </tr>`;
+  }).join('');
+}
+document.getElementById('filter-licz-status').addEventListener('change',renderLicz);
+document.getElementById('btn-add-licz').addEventListener('click',()=>{
+  document.getElementById('licz-id').value='';
+  document.getElementById('m-licz-title').textContent='Nowy licznik';
+  ['licz-nr','licz-montaz','licz-legal','licz-uwagi'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('licz-dz').value='';document.getElementById('licz-status').value='aktywny';
+  document.getElementById('err-licz').style.display='none';openM('m-licz');
+});
+document.getElementById('licz-montaz').addEventListener('input',function(){
+  if(!this.value){document.getElementById('licz-legal').value='';return;}
+  const d=new Date(this.value+'T12:00:00');d.setFullYear(d.getFullYear()+10);
+  document.getElementById('licz-legal').value=d.toLocaleDateString('pl-PL');
+});
+document.getElementById('tb-licz').addEventListener('click',async function(e){
+  if(!isAdmin)return;
+  const editBtn=e.target.closest('[data-edit-licz]');const delBtn=e.target.closest('[data-del-licz]');
+  if(editBtn){
+    const l=allLicz.find(l=>l.id===editBtn.dataset.editLicz);if(!l)return;
+    document.getElementById('licz-id').value=l.id;
+    document.getElementById('m-licz-title').textContent='Edytuj licznik';
+    document.getElementById('licz-dz').value=l.dzialka_id||'';
+    document.getElementById('licz-nr').value=l.numer||'';
+    document.getElementById('licz-montaz').value=l.data_montazu||'';
+    if(l.data_montazu){const d=new Date(l.data_montazu+'T12:00:00');d.setFullYear(d.getFullYear()+10);document.getElementById('licz-legal').value=d.toLocaleDateString('pl-PL');}
+    document.getElementById('licz-status').value=l.status||'aktywny';
+    document.getElementById('licz-uwagi').value=l.uwagi||'';
+    document.getElementById('err-licz').style.display='none';openM('m-licz');
+  }
+  if(delBtn){
+    if(!confirm('Usunąć licznik wraz z odczytami?'))return;
+    try{await sbDel('liczniki',delBtn.dataset.delLicz);toast('Licznik usunięty.');await Promise.all([loadLicz(),loadOd()]);renderReadingTable();}
+    catch(e){toast('Błąd: '+e.message,'err');}
+  }
+});
+document.getElementById('btn-save-licz').addEventListener('click',async function(){
+  if(!isAdmin)return;
+  const id=document.getElementById('licz-id').value;
+  const errEl=document.getElementById('err-licz');errEl.style.display='none';
+  const montaz=document.getElementById('licz-montaz').value;if(!montaz){setErr(errEl,'Podaj datę montażu.');return;}
+  const ld=new Date(montaz+'T12:00:00');ld.setFullYear(ld.getFullYear()+10);
+  const p={dzialka_id:document.getElementById('licz-dz').value,numer:document.getElementById('licz-nr').value.trim(),data_montazu:montaz,data_legalizacji:ld.toISOString().split('T')[0],status:document.getElementById('licz-status').value,uwagi:document.getElementById('licz-uwagi').value.trim()||null};
+  if(!p.dzialka_id||!p.numer){setErr(errEl,'Wybierz działkę i podaj numer.');return;}
+  this.disabled=true;
+  try{
+    if(id)await sbPatch('liczniki',id,p);else await sbPost('liczniki',p);
+    closeM('m-licz');toast(id?'Licznik zaktualizowany.':'Licznik dodany.','ok');await Promise.all([loadLicz(),loadDz()]);renderReadingTable();
+  }catch(e){setErr(errEl,e.message);}
+  this.disabled=false;
+});
+
+// ══════════════════════════════════════════════
+//  SEZONY
+// ══════════════════════════════════════════════
+function renderSz(){
+  const tb=document.getElementById('tb-sz');
+  document.getElementById('cnt-sz').textContent=allSz.length+' sezonów';
+  if(!allSz.length){tb.innerHTML='<tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--muted)">Brak sezonów</td></tr>';return;}
+  tb.innerHTML=allSz.map(s=>`<tr>
+    <td><strong>${x(s.nazwa)}</strong></td>
+    <td data-label="Data od" class="mono">${fmtD(s.data_od)}</td>
+    <td data-label="Data do" class="mono">${fmtD(s.data_do)}</td>
+    <td data-label="Stawka" class="mono"><strong>${fmt(s.stawka,4)} zł/kWh</strong></td>
+    ${isAdmin?`<td class="no-label" style="display:flex;gap:.3rem">
+      <button class="btn btn-ghost btn-sm" data-edit-sz="${s.id}" type="button">✏️ Edytuj</button>
+      <button class="btn btn-danger btn-sm" data-del-sz="${s.id}" type="button">🗑</button>
+    </td>`:'<td></td>'}
+  </tr>`).join('');
+}
+document.getElementById('btn-add-sz').addEventListener('click',()=>{
+  document.getElementById('sz-id').value='';
+  document.getElementById('m-sz-title').textContent='Nowy sezon';
+  ['sz-nazwa','sz-od','sz-do','sz-stawka'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('err-sz').style.display='none';openM('m-sz');
+});
+document.getElementById('tb-sz').addEventListener('click',async function(e){
+  if(!isAdmin)return;
+  const editBtn=e.target.closest('[data-edit-sz]');const delBtn=e.target.closest('[data-del-sz]');
+  if(editBtn){
+    const s=allSz.find(s=>s.id===editBtn.dataset.editSz);if(!s)return;
+    document.getElementById('sz-id').value=s.id;
+    document.getElementById('m-sz-title').textContent='Edytuj sezon';
+    document.getElementById('sz-nazwa').value=s.nazwa||'';
+    document.getElementById('sz-od').value=s.data_od||'';
+    document.getElementById('sz-do').value=s.data_do||'';
+    document.getElementById('sz-stawka').value=s.stawka||'';
+    document.getElementById('err-sz').style.display='none';openM('m-sz');
+  }
+  if(delBtn){
+    if(!confirm('Usunąć sezon wraz z rozliczeniami?'))return;
+    try{await sbDel('sezony',delBtn.dataset.delSz);toast('Sezon usunięty.');await Promise.all([loadSz(),loadRoz()]);}
+    catch(e){toast('Błąd: '+e.message,'err');}
+  }
+});
+document.getElementById('btn-save-sz').addEventListener('click',async function(){
+  if(!isAdmin)return;
+  const id=document.getElementById('sz-id').value;
+  const errEl=document.getElementById('err-sz');errEl.style.display='none';
+  const p={nazwa:document.getElementById('sz-nazwa').value.trim(),data_od:document.getElementById('sz-od').value,data_do:document.getElementById('sz-do').value,stawka:parseFloat(document.getElementById('sz-stawka').value)};
+  if(!p.nazwa||!p.data_od||!p.data_do||isNaN(p.stawka)){errEl.style.display='block';return;}
+  if(p.data_od>p.data_do){setErr(errEl,'"Data od" musi być wcześniejsza.');return;}
+  this.disabled=true;
+  try{
+    if(id)await sbPatch('sezony',id,p);else await sbPost('sezony',p);
+    closeM('m-sz');toast(id?'Sezon zaktualizowany.':'Sezon dodany.','ok');await loadSz();
+  }catch(e){setErr(errEl,e.message);}
+  this.disabled=false;
+});
+
+// ══════════════════════════════════════════════
+//  CSV IMPORT
+// ══════════════════════════════════════════════
+let importRows=[];
+document.getElementById('btn-import-csv').addEventListener('click',()=>{
+  importRows=[];
+  document.getElementById('import-preview').style.display='none';
+  document.getElementById('btn-do-import').style.display='none';
+  document.getElementById('err-import').style.display='none';
+  document.getElementById('import-filename').textContent='';
+  document.getElementById('import-file').value='';
+  openM('m-import');
+});
+document.getElementById('btn-dl-template').addEventListener('click',()=>{
+  dlText('\uFEFFnumer_dzialki;imie;nazwisko;telefon;adres;email;uwagi;numer_licznika;data_montazu\nA-1;Jan;Kowalski;600 100 200;ul. Różana 5 60-001 Poznań;jan@email.pl;;12345678;2019-05-15\nA-2;Anna;Nowak;500 200 300;;;przy bramie;87654321;2020-03-22\nB-12;Piotr;Wiśniewski;;;piotr@wp.pl;;;',
+    'szablon_import_rod.csv','text/csv');
+});
+document.getElementById('import-file').addEventListener('change',function(){
+  const file=this.files[0];if(!file)return;
+  document.getElementById('import-filename').textContent=file.name;
+  const reader=new FileReader();
+  reader.onload=e=>parseImportCsv(e.target.result.replace(/^\uFEFF/,''));
+  reader.readAsText(file,'UTF-8');
+});
+function parseImportCsv(text){
+  const errEl=document.getElementById('err-import');errEl.style.display='none';
+  const lines=text.split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2){setErr(errEl,'Plik jest pusty lub nie ma danych.');return;}
+  const sep=lines[0].includes(';')?';':',';
+  const headers=lines[0].split(sep).map(h=>h.trim().toLowerCase().replace(/"/g,''));
+  for(const r of ['numer_dzialki','imie','nazwisko']){if(!headers.includes(r)){setErr(errEl,'Brak kolumny: '+r);return;}}
+  const idx=h=>headers.indexOf(h);
+  const parsed=[];const errors=[];
+  for(let i=1;i<lines.length;i++){
+    const cols=splitCsvLine(lines[i],sep);
+    const get=h=>(cols[idx(h)]||'').trim().replace(/^"|"$/g,'');
+    const nr=get('numer_dzialki'),imie=get('imie'),nazw=get('nazwisko');
+    if(!nr&&!imie&&!nazw)continue;
+    if(!nr||!imie||!nazw){errors.push(`Wiersz ${i+1}: brak wymaganego pola.`);continue;}
+    const montaz=get('data_montazu');let legalizacja='',legalOk=true;
+    if(montaz){
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(montaz)){legalOk=false;errors.push(`Wiersz ${i+1}: zły format daty (wymagane RRRR-MM-DD).`);}
+      else{const d=new Date(montaz+'T12:00:00');d.setFullYear(d.getFullYear()+10);legalizacja=d.toISOString().split('T')[0];}
+    }
+    parsed.push({nr,imie,nazw,telefon:get('telefon')||null,adres:get('adres')||null,email:get('email')||null,uwagi:get('uwagi')||null,numer_licznika:get('numer_licznika')||null,data_montazu:montaz||null,data_legalizacji:legalizacja||null,legalOk,row:i+1});
+  }
+  if(!parsed.length&&errors.length){setErr(errEl,errors.join('\n'));return;}
+  importRows=parsed;
+  const valid=parsed.filter(p=>p.legalOk);
+  const sumEl=document.getElementById('import-summary');
+  sumEl.className='alert '+(errors.length?'alert-warn':'alert-info');
+  sumEl.innerHTML=`Znaleziono <strong>${valid.length}</strong> działek.`+(errors.length?` <span style="color:var(--amber)">⚠ ${errors.length} wierszy z błędami zostanie pominiętych.</span>`:'');
+  document.getElementById('import-preview-tb').innerHTML=parsed.map(p=>`<tr class="${p.legalOk?'':'skip'}">
+    <td>${p.row}</td><td><strong>${x(p.nr)}</strong></td><td>${x(p.imie)} ${x(p.nazw)}</td>
+    <td>${x(p.telefon||'')}</td>
+    <td class="mono">${p.numer_licznika?x(p.numer_licznika):'—'}</td>
+    <td class="mono">${p.data_montazu||'—'}</td>
+    <td>${p.legalOk?'<span class="badge b-green">✓</span>':'<span class="badge b-red">błąd</span>'}</td>
+  </tr>`).join('');
+  document.getElementById('import-preview').style.display='block';
+  const btn=document.getElementById('btn-do-import');
+  btn.style.display=valid.length?'inline-flex':'none';
+  document.getElementById('import-count').textContent=valid.length;
+}
+function splitCsvLine(line,sep){
+  const result=[];let cur='';let inQ=false;
+  for(const c of line){if(c==='"')inQ=!inQ;else if(c===sep&&!inQ){result.push(cur);cur='';}else cur+=c;}
+  result.push(cur);return result;
+}
+document.getElementById('btn-do-import').addEventListener('click',async function(){
+  if(!isAdmin)return;
+  const valid=importRows.filter(p=>p.legalOk);if(!valid.length)return;
+  this.disabled=true;this.innerHTML='<span class="spin"></span> Importuję...';
+  let ok=0,liczOk=0,skipped=0;
+  for(const row of valid){
+    try{
+      let dzId=null;
+      const existing=allDz.find(d=>d.numer_dzialki===row.nr);
+      if(existing){await sbPatch('dzialki',existing.id,{imie:row.imie,nazwisko:row.nazw,telefon:row.telefon,adres:row.adres,email:row.email,uwagi:row.uwagi});dzId=existing.id;}
+      else{const res=await sbPost('dzialki',{numer_dzialki:row.nr,imie:row.imie,nazwisko:row.nazw,telefon:row.telefon,adres:row.adres,email:row.email,uwagi:row.uwagi});dzId=res[0]?.id;}
+      ok++;
+      if(dzId&&row.numer_licznika&&row.data_montazu&&row.data_legalizacji){
+        const lEx=allLicz.find(l=>l.dzialka_id===dzId&&l.status==='aktywny');
+        if(!lEx){await sbPost('liczniki',{dzialka_id:dzId,numer:row.numer_licznika,data_montazu:row.data_montazu,data_legalizacji:row.data_legalizacji,status:'aktywny'});liczOk++;}
+      }
+    }catch(e){skipped++;console.error(e);}
+  }
+  await Promise.all([loadDz(),loadLicz()]);renderReadingTable();
+  this.disabled=false;this.innerHTML='⬆ Importuj';
+  closeM('m-import');
+  toast(`Zaimportowano ${ok} działek, ${liczOk} liczników.${skipped?' Błędy: '+skipped:''}`,'ok');
+});
+
+// ══════════════════════════════════════════════
+//  RTF GENERATOR
+// ══════════════════════════════════════════════
+function rtfEsc(s){return String(s||'').replace(/\\/g,'\\\\').replace(/[{}]/g,'\\$&').replace(/[^\x00-\x7F]/g,c=>`\\u${c.charCodeAt(0)}?`);}
+function genRtf(title,subtitle,headers,colWidths,rows){
+  let rtf='{\\rtf1\\ansi\\deff0\n{\\fonttbl{\\f0 Arial;}}\n{\\colortbl;\\red15\\green50\\blue30;\\red0\\green0\\blue0;}\n';
+  rtf+='\\paperw16838\\paperh11906\\margl1000\\margr1000\\margt1000\\margb1000\\landscape\n';
+  rtf+=`\\f0\\fs28\\b\\cf1 ${rtfEsc(title)}\\b0\\cf2\\par\n`;
+  rtf+=`\\f0\\fs20 ${rtfEsc(subtitle)}\\par\\f0\\fs16\\i Wygenerowano: ${new Date().toLocaleDateString('pl-PL')}\\i0\\par\\par\n`;
+  let pos=0;
+  rtf+='\\trowd\\trgaph60\n';colWidths.forEach(w=>{pos+=w;rtf+=`\\cellx${pos}`;});
+  rtf+='\\f0\\fs17\\b ';headers.forEach(h=>{rtf+=h+'\\cell ';});rtf+='\\b0\\row\n';
+  rows.forEach(row=>{
+    rtf+='\\trowd\\trgaph60\n';pos=0;colWidths.forEach(w=>{pos+=w;rtf+=`\\cellx${pos}`;});
+    rtf+='\\f0\\fs16 ';row.forEach(c=>{rtf+=rtfEsc(String(c||''))+'\\cell ';});rtf+='\\row\n';
+  });
+  rtf+=`\\par\\f0\\fs15\\cf1 Liczba rekord\\u243w: ${rows.length}\\cf2\\par}`;
+  dlText(rtf,'raport_rod.rtf','application/rtf');
+  toast('Raport pobrany.','ok');
+}
+
+// ══════════════════════════════════════════════
+//  START
+// ══════════════════════════════════════════════
+initApp();
+</script>
+</body>
+</html>
