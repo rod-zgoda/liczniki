@@ -71,7 +71,7 @@ main{max-width:1200px;margin:0 auto;padding:1.5rem 1.4rem}
 .season-info strong{color:var(--g700)}
 .reading-table-wrap{overflow-x:auto;border-radius:var(--rsm);border:1px solid var(--border)}
 .reading-table{width:100%;border-collapse:collapse;font-size:.82rem}
-.reading-table thead th{text-align:left;padding:.55rem .9rem;background:var(--g900);color:#fff;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.reading-table thead th{text-align:left;padding:.55rem .9rem;background:var(--g900);color:#fff;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;position:sticky;top:52px;z-index:10}
 .reading-table tbody tr{border-bottom:1px solid #eef4f0;transition:background .1s}
 .reading-table tbody tr:last-child{border-bottom:none}
 .reading-table tbody tr:hover{background:#f3f9f5}
@@ -92,7 +92,7 @@ main{max-width:1200px;margin:0 auto;padding:1.5rem 1.4rem}
 .save-bar-info strong{color:var(--g700)}
 .tw{overflow-x:auto;border-radius:var(--rsm);border:1px solid var(--border)}
 table{width:100%;border-collapse:collapse;font-size:.81rem}
-thead th{text-align:left;padding:.55rem .9rem;background:var(--g900);color:#fff;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;cursor:default}
+thead th{text-align:left;padding:.55rem .9rem;background:var(--g900);color:#fff;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;cursor:default;position:sticky;top:52px;z-index:10}
 thead th.sortable{cursor:pointer;user-select:none}
 thead th.sortable:hover{background:var(--g800)}
 thead th.sort-asc::after{content:' ▲';opacity:.7;font-size:.65rem}
@@ -199,7 +199,7 @@ body.is-admin .admin-only-block{display:block}
   .mob-cards tbody td.no-label{justify-content:flex-end}
   .mob-cards tbody td:first-child{font-size:.9rem;font-weight:700;color:var(--g800);border-bottom:1px solid var(--border);padding-bottom:.45rem;margin-bottom:.2rem}
   .mob-cards tbody td:first-child::before{display:none}
-  .mob-cards tbody td:first-child::after{content:attr(data-os);font-weight:400;font-size:.78rem;color:var(--muted);margin-left:.4rem}
+  .mob-cards tbody td:first-child::after{content:attr(data-os);font-weight:500;font-size:.8rem;color:var(--text);display:block;margin-top:.15rem}
   .mob-cards tbody td[data-label="Działkowiec"]{display:none}
   .mob-cards tbody td[data-label="Działka"]{display:none}
   .mob-cards .tw{border:none;overflow:visible}
@@ -210,7 +210,7 @@ body.is-admin .admin-only-block{display:block}
   .reading-table tbody td[data-label]::before{content:attr(data-label);font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;flex-shrink:0}
   .reading-table tbody td:first-child{font-size:.92rem;font-weight:700;color:var(--g800);border-bottom:1px solid var(--border);padding-bottom:.45rem;margin-bottom:.15rem}
   .reading-table tbody td:first-child::before{display:none}
-  .reading-table tbody td:first-child::after{content:attr(data-os);font-weight:400;font-size:.78rem;color:var(--muted);margin-left:.4rem}
+  .reading-table tbody td:first-child::after{content:attr(data-os);font-weight:500;font-size:.8rem;color:var(--text);display:block;margin-top:.15rem}
   .reading-table tbody td[data-label="Działkowiec"]{display:none}
   .reading-input{width:130px}
   .modal{padding:1.2rem;border-radius:10px}
@@ -312,7 +312,7 @@ body.is-admin .admin-only-block{display:block}
               <th class="sortable" data-col="kwota">Kwota</th>
               <th class="sortable" data-col="wplacono">Wpłacono</th>
               <th class="sortable" data-col="saldo">Saldo</th>
-              <th>Status</th><th class="admin-only">Akcje</th>
+              <th>Status</th><th></th>
             </tr></thead>
             <tbody id="tb-roz"></tbody>
           </table>
@@ -348,7 +348,7 @@ body.is-admin .admin-only-block{display:block}
               <th class="sortable" data-col-plat="kwota">Należność</th>
               <th class="sortable" data-col-plat="wplacono">Wpłacono</th>
               <th class="sortable" data-col-plat="saldo">Saldo</th>
-              <th>Status</th><th class="admin-only">Akcje</th>
+              <th>Status</th><th></th>
             </tr></thead>
             <tbody id="tb-plat"></tbody>
           </table>
@@ -377,7 +377,7 @@ body.is-admin .admin-only-block{display:block}
               <thead><tr>
                 <th class="sortable" data-col-dz="numer_dzialki">Nr działki</th>
                 <th>Działkowiec</th><th>Telefon</th><th>E-mail</th>
-                <th>Licznik</th><th>Legalizacja</th><th class="admin-only">Akcje</th>
+                <th>Licznik</th><th>Legalizacja</th><th></th>
               </tr></thead>
               <tbody id="tb-dz"></tbody>
             </table>
@@ -394,14 +394,15 @@ body.is-admin .admin-only-block{display:block}
           </div>
         </div>
         <div class="setting-section-body" id="sec-licz">
-          <div style="padding:.6rem .8rem;border-bottom:1px solid var(--border)">
+          <div style="padding:.6rem .8rem;border-bottom:1px solid var(--border);display:flex;gap:.5rem;flex-wrap:wrap">
+            <input type="search" id="search-licz" placeholder="Szukaj po numerze, działce..." style="flex:1;min-width:160px;padding:.42rem .75rem;border:1.5px solid var(--border);border-radius:var(--rsm);font-size:.8rem;outline:none;font-family:'Inter',sans-serif" />
             <select id="filter-licz-status" style="padding:.42rem .75rem;border:1.5px solid var(--border);border-radius:var(--rsm);font-size:.8rem;outline:none;font-family:'Inter',sans-serif;background:#fff">
               <option value="">Wszystkie</option><option value="aktywny">Aktywne</option><option value="wymieniony">Wymienione</option>
             </select>
           </div>
           <div class="tw" style="border:none">
             <table class="mob-cards">
-              <thead><tr><th>Nr licznika</th><th>Działka</th><th>Data montażu</th><th>Legalizacja do</th><th>Status</th><th class="admin-only">Akcje</th></tr></thead>
+              <thead><tr><th>Nr licznika</th><th>Działka</th><th>Data montażu</th><th>Legalizacja do</th><th>Status</th><th></th></tr></thead>
               <tbody id="tb-licz"></tbody>
             </table>
           </div>
@@ -419,7 +420,7 @@ body.is-admin .admin-only-block{display:block}
         <div class="setting-section-body" id="sec-sz">
           <div class="tw" style="border:none">
             <table class="mob-cards">
-              <thead><tr><th>Nazwa</th><th>Data od</th><th>Data do</th><th>Stawka (zł/kWh)</th><th class="admin-only">Akcje</th></tr></thead>
+              <thead><tr><th>Nazwa</th><th>Data od</th><th>Data do</th><th>Stawka (zł/kWh)</th><th></th></tr></thead>
               <tbody id="tb-sz"></tbody>
             </table>
           </div>
@@ -844,7 +845,8 @@ function mergedPersonLine(v1,v2){
 function dzNazwisko(dz){
   const n1=`${dz.imie||''} ${dz.nazwisko||''}`.trim();
   const n2=dz.imie2||dz.nazwisko2?`${dz.imie2||''} ${dz.nazwisko2||''}`.trim():'';
-  return n2?n1+'<br><span style="color:var(--muted);font-size:.78rem">'+x(n2)+'</span>':x(n1);
+  if(!n2) return x(n1);
+  return x(n1)+'<br>'+x(n2);
 }
 function dzFirstName(dz){return `${dz.imie||''} ${dz.nazwisko||''}`.trim();}
 
@@ -921,7 +923,7 @@ function renderReadingTable(){
   const sr=getSeasonReadings(currentSezonId);
   tb.innerHTML=sorted.map(dz=>{
     const licz=allLicz.find(l=>l.dzialka_id===dz.id&&l.status==='aktywny');
-    if(!licz) return `<tr><td data-os="${x(dzFirstName(dz))}"><strong>${x(dz.numer_dzialki)}</strong></td><td data-label="Działkowiec">${dzNazwisko(dz)}</td><td colspan="5" style="color:var(--muted);font-size:.76rem">⚠ Brak aktywnego licznika</td></tr>`;
+    if(!licz) return `<tr><td data-os="${x(dzFirstName(dz)+(dz.imie2||dz.nazwisko2?' / '+(dz.imie2||'')+' '+(dz.nazwisko2||''):'' ))}"><strong>${x(dz.numer_dzialki)}</strong></td><td data-label="Działkowiec">${dzNazwisko(dz)}</td><td colspan="5" style="color:var(--muted);font-size:.76rem">⚠ Brak aktywnego licznika</td></tr>`;
     const existOd=sr[licz.id]||null;
     const prevOd=getPrevOdczyt(licz.id,currentSezonId);
     const pending=pendingReadings[dz.id];
@@ -931,7 +933,7 @@ function renderReadingTable(){
     if(!isNaN(stanVal)&&prevOd){const z=stanVal-prevOd.stan;zuzycie=`<span class="${z>=0?'zuzycie-pos':'zuzycie-neg'}">${fmt(z)}</span>`;}
     let badge=pending?'<span class="rs rs-changed">✏</span>':existOd?'<span class="rs rs-done">✓</span>':'<span class="rs rs-empty">—</span>';
     return `<tr class="${existOd&&!pending?'has-reading':''}">
-      <td data-os="${x(dzFirstName(dz))}"><strong>${x(dz.numer_dzialki)}</strong></td>
+      <td data-os="${x(dzFirstName(dz)+(dz.imie2||dz.nazwisko2?' / '+(dz.imie2||'')+' '+(dz.nazwisko2||''):'' ))}"><strong>${x(dz.numer_dzialki)}</strong></td>
       <td data-label="Działkowiec">${dzNazwisko(dz)}</td>
       <td data-label="Nr licznika" class="mono">${x(licz.numer)}</td>
       <td data-label="Poprzedni odczyt" class="mono">${prevOd?fmt(prevOd.stan)+' kWh <small style="color:var(--muted)">('+fmtD(prevOd.data_odczytu)+')</small>':'<span style="color:var(--muted)">brak</span>'}</td>
@@ -1077,7 +1079,7 @@ function renderRoz(){
     const wpl=getRozWplacono(r.id);
     const saldo=wpl-Number(r.kwota||0);
     return `<tr>
-      <td data-os="${x(dzFirstName(dz))}"><strong>${x(dz.numer_dzialki||'—')}</strong></td>
+      <td data-os="${x(dzFirstName(dz)+(dz.imie2||dz.nazwisko2?' / '+(dz.imie2||'')+' '+(dz.nazwisko2||''):'' ))}"><strong>${x(dz.numer_dzialki||'—')}</strong></td>
       <td data-label="Działkowiec">${dzNazwisko(dz)}</td>
       <td data-label="Sezon">${x(sz.nazwa||'—')}</td>
       <td data-label="Start" class="mono">${fmt(r.stan_start)} kWh</td>
@@ -1264,7 +1266,7 @@ function renderPlatnosci(){
     const plats=allPlat.filter(p=>p.rozliczenie_id===r.id).sort((a,b)=>b.data_wplaty.localeCompare(a.data_wplaty));
     const bm={'opłacone':'b-green','nieopłacone':'b-red','częściowe':'b-amber'};
     const mainRow=`<tr>
-      <td data-os="${x(dzFirstName(dz))}"><strong>${x(dz.numer_dzialki||'—')}</strong></td>
+      <td data-os="${x(dzFirstName(dz)+(dz.imie2||dz.nazwisko2?' / '+(dz.imie2||'')+' '+(dz.nazwisko2||''):'' ))}"><strong>${x(dz.numer_dzialki||'—')}</strong></td>
       <td data-label="Działkowiec">${dzNazwisko(dz)}</td>
       <td data-label="Sezon">${x(sz.nazwa||'—')}</td>
       <td data-label="Należność" class="mono"><strong>${fmt(r.kwota)} zł</strong></td>
@@ -1343,10 +1345,13 @@ function renderDz(){
   if(!rows.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--muted)">Brak działek</td></tr>';return;}
   tb.innerHTML=rows.map(d=>{
     const licz=allLicz.find(l=>l.dzialka_id===d.id&&l.status==='aktywny');
+    const n1=`${d.imie||''} ${d.nazwisko||''}`.trim();
+    const n2=d.imie2||d.nazwisko2?`${d.imie2||''} ${d.nazwisko2||''}`.trim():'';
+    const dataOs=n2?`${n1} / ${n2}`:n1;
     const tel=mergedPersonLine(d.telefon,d.telefon2);
     const email=mergedPersonLine(d.email,d.email2);
     return `<tr>
-      <td data-os="${x(dzFirstName(d))}"><strong>${x(d.numer_dzialki)}</strong></td>
+      <td data-os="${x(dataOs)}"><strong>${x(d.numer_dzialki)}</strong></td>
       <td data-label="Działkowiec">${dzNazwisko(d)}${d.adres?`<br><span style="font-size:.72rem;color:var(--muted)">${x(d.adres)}</span>`:''}</td>
       <td data-label="Telefon" style="font-size:.76rem">${tel}</td>
       <td data-label="E-mail" style="font-size:.76rem">${email}</td>
@@ -1427,8 +1432,14 @@ document.getElementById('btn-save-dz').addEventListener('click',async function()
 // ══════════════════════════════════════════════
 function renderLicz(){
   const sf=document.getElementById('filter-licz-status').value;
+  const q=(document.getElementById('search-licz')?.value||'').toLowerCase();
   const tb=document.getElementById('tb-licz');
-  const rows=allLicz.filter(l=>!sf||l.status===sf);
+  const rows=allLicz.filter(l=>{
+    const dz=l.dzialki||{};
+    const mS=!sf||l.status===sf;
+    const mQ=!q||l.numer?.toLowerCase().includes(q)||dz.numer_dzialki?.toLowerCase().includes(q)||dz.nazwisko?.toLowerCase().includes(q);
+    return mS&&mQ;
+  });
   document.getElementById('cnt-licz').textContent=allLicz.filter(l=>l.status==='aktywny').length+' aktywnych';
   if(!rows.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--muted)">Brak liczników</td></tr>';return;}
   const bs={'aktywny':'b-green','wymieniony':'b-gray'};
@@ -1448,6 +1459,7 @@ function renderLicz(){
   }).join('');
 }
 document.getElementById('filter-licz-status').addEventListener('change',renderLicz);
+document.getElementById('search-licz').addEventListener('input',renderLicz);
 document.getElementById('btn-add-licz').addEventListener('click',()=>{
   document.getElementById('licz-id').value='';document.getElementById('m-licz-title').textContent='Nowy licznik';
   ['licz-nr','licz-montaz','licz-legal','licz-uwagi'].forEach(id=>document.getElementById(id).value='');
