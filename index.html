@@ -71,7 +71,7 @@ main{max-width:1200px;margin:0 auto;padding:1.5rem 1.4rem}
 .season-info strong{color:var(--g700)}
 .reading-table-wrap{overflow-x:auto;border-radius:var(--rsm);border:1px solid var(--border)}
 .reading-table{width:100%;border-collapse:collapse;font-size:.82rem}
-.reading-table thead th{text-align:left;padding:.55rem .9rem;background:var(--g900);color:#fff;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;position:sticky;top:52px;z-index:10}
+.reading-table thead th{text-align:left;padding:.55rem .9rem;background:var(--g900);color:#fff;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
 .reading-table tbody tr{border-bottom:1px solid #eef4f0;transition:background .1s}
 .reading-table tbody tr:last-child{border-bottom:none}
 .reading-table tbody tr:hover{background:#f3f9f5}
@@ -92,7 +92,7 @@ main{max-width:1200px;margin:0 auto;padding:1.5rem 1.4rem}
 .save-bar-info strong{color:var(--g700)}
 .tw{overflow-x:auto;border-radius:var(--rsm);border:1px solid var(--border)}
 table{width:100%;border-collapse:collapse;font-size:.81rem}
-thead th{text-align:left;padding:.55rem .9rem;background:var(--g900);color:#fff;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;cursor:default;position:sticky;top:52px;z-index:10}
+thead th{text-align:left;padding:.55rem .9rem;background:var(--g900);color:#fff;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;cursor:default}
 thead th.sortable{cursor:pointer;user-select:none}
 thead th.sortable:hover{background:var(--g800)}
 thead th.sort-asc::after{content:' ▲';opacity:.7;font-size:.65rem}
@@ -845,8 +845,19 @@ function mergedPersonLine(v1,v2){
 function dzNazwisko(dz){
   const n1=`${dz.imie||''} ${dz.nazwisko||''}`.trim();
   const n2=dz.imie2||dz.nazwisko2?`${dz.imie2||''} ${dz.nazwisko2||''}`.trim():'';
-  if(!n2) return x(n1);
-  return x(n1)+'<br>'+x(n2);
+  const a1=dz.adres||'';
+  const a2=dz.adres2||'';
+  if(!n2){
+    // tylko jedna osoba
+    return x(n1)+(a1?`<br><span style="font-size:.75rem;color:var(--muted)">${x(a1)}</span>`:'');
+  }
+  // dwie osoby — adresy identyczne lub brak adresu 2
+  if(!a2||a1===a2){
+    return x(n1)+'<br>'+x(n2)+(a1?`<br><span style="font-size:.75rem;color:var(--muted)">${x(a1)}</span>`:'');
+  }
+  // dwie osoby — różne adresy
+  return x(n1)+(a1?`<br><span style="font-size:.75rem;color:var(--muted)">${x(a1)}</span>`:'')
+    +'<br>'+x(n2)+(a2?`<br><span style="font-size:.75rem;color:var(--muted)">${x(a2)}</span>`:'');
 }
 function dzFirstName(dz){return `${dz.imie||''} ${dz.nazwisko||''}`.trim();}
 
@@ -1352,7 +1363,7 @@ function renderDz(){
     const email=mergedPersonLine(d.email,d.email2);
     return `<tr>
       <td data-os="${x(dataOs)}"><strong>${x(d.numer_dzialki)}</strong></td>
-      <td data-label="Działkowiec">${dzNazwisko(d)}${d.adres?`<br><span style="font-size:.72rem;color:var(--muted)">${x(d.adres)}</span>`:''}</td>
+      <td data-label="Działkowiec">${dzNazwisko(d)}</td>
       <td data-label="Telefon" style="font-size:.76rem">${tel}</td>
       <td data-label="E-mail" style="font-size:.76rem">${email}</td>
       <td data-label="Licznik" class="mono" style="font-size:.76rem">${licz?x(licz.numer):'<span style="color:var(--muted)">brak</span>'}</td>
