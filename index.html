@@ -223,6 +223,20 @@ body.is-admin .admin-only-block{display:block}
 </head>
 <body>
 
+<!-- OTP RESET -->
+<div class="overlay hidden" id="otp-ov">
+  <div class="obox">
+    <div class="brand">ROD <span>Liczniki</span></div>
+    <div class="brand-sub">Ustaw nowe hasło</div>
+    <input type="hidden" id="otp-token" />
+    <div class="field"><label>E-mail</label><input id="otp-email" type="email" placeholder="twoj@email.pl" /></div>
+    <div class="field"><label>Nowe hasło</label><input id="otp-pass1" type="password" placeholder="Min. 6 znaków" /></div>
+    <div class="field"><label>Powtórz hasło</label><input id="otp-pass2" type="password" placeholder="Powtórz hasło" /></div>
+    <div class="login-err" id="otp-err"></div>
+    <button class="btn btn-primary btn-full" id="btn-otp-save" type="button">Ustaw hasło</button>
+  </div>
+</div>
+
 <!-- LOGIN -->
 <div class="overlay" id="login-ov">
   <div class="obox">
@@ -677,26 +691,40 @@ let platSort={col:'numer_dzialki',asc:true};
 //  INIT / AUTH
 // ══════════════════════════════════════════════
 async function initApp(){
-  // Sprawdź token z linku zaproszenia
   const hash=window.location.hash;
-  if(hash&&hash.includes('access_token')){
-    const params=new URLSearchParams(hash.replace('#',''));
-    const token=params.get('access_token');
-    const type=params.get('type');
-    if(token&&(type==='invite'||type==='recovery')){
-      history.replaceState(null,'',window.location.pathname);
-      SB_TOKEN=token;
-      try{
-        const r=await fetch(SB_URL+'/auth/v1/user',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+token}});
-        const u=await r.json();
-        localStorage.setItem('rod5_sess',JSON.stringify({access_token:token,expires_at:Math.floor(Date.now()/1000)+3600,user:u}));
-        document.getElementById('set-pass-email').textContent=u.email||'';
-        await showApp(u.email||'');
-        openM('m-set-pass');
-      }catch(e){show('login-ov');}
-      return;
-    }
+  const params=new URLSearchParams(hash.replace('#',''));
+  const token=params.get('access_token');
+  const type=params.get('type');
+
+  // Przypadek 1: prawdziwy JWT w hashu (zaproszenie lub reset przez ConfirmationURL)
+  if(token&&token.includes('.')&&(type==='invite'||type==='recovery')){
+    history.replaceState(null,'',window.location.pathname);
+    SB_TOKEN=token;
+    try{
+      const r=await fetch(SB_URL+'/auth/v1/user',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+token}});
+      const u=await r.json();
+      if(!u.email)throw new Error('Brak email');
+      localStorage.setItem('rod5_sess',JSON.stringify({access_token:token,expires_at:Math.floor(Date.now()/1000)+3600,user:u}));
+      document.getElementById('set-pass-email').textContent=u.email||'';
+      await showApp(u.email||'');
+      openM('m-set-pass');
+    }catch(e){show('login-ov');}
+    return;
   }
+
+  // Przypadek 2: krótki OTP token z szablonu {{ .Token }} — wymaga weryfikacji
+  if(token&&!token.includes('.')&&type==='recovery'){
+    history.replaceState(null,'',window.location.pathname);
+    // Pobierz e-mail z parametru lub z URL
+    const email=params.get('email')||'';
+    // Pokaż specjalny formularz resetu z polem e-mail i tokenem OTP
+    document.getElementById('otp-token').value=token;
+    document.getElementById('otp-email').value=email;
+    show('otp-ov');
+    return;
+  }
+
+  // Przypadek 3: normalny start — sprawdź sesję
   const sess=JSON.parse(localStorage.getItem('rod5_sess')||'null');
   if(sess&&sess.access_token&&sess.expires_at>Date.now()/1000+10){
     SB_TOKEN=sess.access_token;showApp(sess.user?.email||'');
@@ -723,6 +751,45 @@ async function showApp(email){
   }
   loadAll();
 }
+
+// ══════════════════════════════════════════════
+//  OTP RESET HASŁA
+// ══════════════════════════════════════════════
+document.getElementById('btn-otp-save').addEventListener('click',async function(){
+  const token=document.getElementById('otp-token').value;
+  const email=document.getElementById('otp-email').value.trim();
+  const p1=document.getElementById('otp-pass1').value;
+  const p2=document.getElementById('otp-pass2').value;
+  const errEl=document.getElementById('otp-err');errEl.style.display='none';
+  if(!email){setErr(errEl,'Podaj adres e-mail.');return;}
+  if(p1.length<6){setErr(errEl,'Hasło musi mieć min. 6 znaków.');return;}
+  if(p1!==p2){setErr(errEl,'Hasła nie są identyczne.');return;}
+  this.disabled=true;this.innerHTML='<span class="spin"></span>';
+  try{
+    // Krok 1: zweryfikuj OTP i dostań JWT
+    const r=await fetch(SB_URL+'/auth/v1/verify',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY},
+      body:JSON.stringify({email,token,type:'recovery'})
+    });
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.message||d.error_description||'Błąd weryfikacji tokenu');
+    SB_TOKEN=d.access_token;
+    // Krok 2: ustaw nowe hasło
+    const r2=await fetch(SB_URL+'/auth/v1/user',{
+      method:'PUT',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_TOKEN},
+      body:JSON.stringify({password:p1})
+    });
+    if(!r2.ok){const e=await r2.json();throw new Error(e.message||'Błąd zmiany hasła');}
+    // Krok 3: zapisz sesję i zaloguj
+    localStorage.setItem('rod5_sess',JSON.stringify({access_token:d.access_token,expires_at:Math.floor(Date.now()/1000)+(d.expires_in||3600),user:d.user}));
+    hide('otp-ov');
+    toast('Hasło ustawione! Jesteś zalogowany.','ok');
+    showApp(d.user?.email||'');
+  }catch(e){setErr(errEl,e.message);}
+  this.disabled=false;this.innerHTML='Ustaw hasło';
+});
 
 // ══════════════════════════════════════════════
 //  LOGIN
