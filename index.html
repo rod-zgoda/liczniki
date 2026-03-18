@@ -223,8 +223,10 @@ body.is-admin .admin-only-block{display:block}
   .mob-cards tbody td.no-label{justify-content:flex-end}
   .mob-cards tbody td:first-child{font-size:.9rem;font-weight:700;color:var(--g800);border-bottom:1px solid var(--border);padding-bottom:.45rem;margin-bottom:.2rem}
   .mob-cards tbody td:first-child::before{display:none}
-  /* Na mobile: komórka "Działkowiec" (druga) schowana — nr działki już w tytule karty */
+  /* Na mobile: komórka "Działkowiec" schowana — imię/nazwisko w tytule karty przez ::after */
+  .mob-cards tbody td:first-child::after{content:attr(data-os);font-weight:400;font-size:.78rem;color:var(--muted);margin-left:.4rem}
   .mob-cards tbody td[data-label="Działkowiec"]{display:none}
+  .mob-cards tbody td[data-label="Działka"]{display:none}
   .mob-cards .tw{border:none;overflow:visible}
 
   /* Tabela odczytów — specjalny układ */
@@ -644,12 +646,7 @@ let isAdmin=false;
 // ══════════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════════
-function getCfg(){
-  return {
-    url: 'https://bcscicrrnuxyifgrgyqn.supabase.co',
-    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjc2NpY3JybnV4eWlmZ3JneXFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNzc0MjUsImV4cCI6MjA4ODY1MzQyNX0.RIXHWCmvd1Hv2IAvVkegbQFwSRmMfi3LJmkrFXcFj2A'
-  }
-}
+function getCfg(){try{return JSON.parse(localStorage.getItem('rod3_cfg')||'null');}catch{return null;}}
 function initApp(){
   const cfg=getCfg();
   if(!cfg){show('setup-ov');return;}
@@ -1123,7 +1120,7 @@ function renderRoz(){
   tb.innerHTML=rows.map(r=>{
     const dz=r.dzialki||{};const sz=r.sezony||{};
     return `<tr>
-      <td><strong>${x(dz.numer_dzialki||'—')}</strong></td>
+      <td data-os="${x(dz.imie||'')} ${x(dz.nazwisko||'')}"><strong>${x(dz.numer_dzialki||'—')}</strong></td>
       <td data-label="Działkowiec">${x(dz.imie||'')} ${x(dz.nazwisko||'')}</td>
       <td data-label="Sezon">${x(sz.nazwa||'—')}</td>
       <td data-label="Odczyt start" class="mono">${fmt(r.stan_start)} kWh</td>
@@ -1204,7 +1201,7 @@ function renderDz(){
   tb.innerHTML=rows.map(d=>{
     const licz=allLicz.find(l=>l.dzialka_id===d.id&&l.status==='aktywny');
     return `<tr>
-      <td><strong>${x(d.numer_dzialki)}</strong></td>
+      <td data-os="${x(d.imie)} ${x(d.nazwisko)}"><strong>${x(d.numer_dzialki)}</strong></td>
       <td data-label="Działkowiec">${x(d.imie)} ${x(d.nazwisko)}${d.adres?`<br><span style="font-size:.72rem;color:var(--muted)">${x(d.adres)}</span>`:''}
       </td>
       <td data-label="Telefon" style="font-size:.78rem">${d.telefon?x(d.telefon):'—'}</td>
@@ -1274,7 +1271,7 @@ function renderLicz(){
   tb.innerHTML=rows.map(l=>{
     const dz=l.dzialki||{};
     return `<tr class="${legalRowCls(l.data_legalizacji)}">
-      <td class="mono"><strong>${x(l.numer)}</strong></td>
+      <td class="mono" data-os="${x(dz.numer_dzialki||'')}"><strong>${x(l.numer)}</strong></td>
       <td data-label="Działka"><strong>${x(dz.numer_dzialki||'—')}</strong><br><span style="font-size:.74rem;color:var(--muted)">${x(dz.imie||'')} ${x(dz.nazwisko||'')}</span></td>
       <td data-label="Data montażu" class="mono">${fmtD(l.data_montazu)}</td>
       <td data-label="Legalizacja do">${legalBadge(l.data_legalizacji)}</td>
