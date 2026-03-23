@@ -307,6 +307,7 @@ body.is-admin .admin-only-block{display:block}
           <div class="actions">
             <button class="btn btn-ghost btn-sm" id="btn-csv-roz" type="button">⬇ CSV</button>
             <button class="btn btn-ghost btn-sm" id="btn-rtf-roz" type="button">📄 Raport</button>
+            <button class="btn btn-blue btn-sm admin-only" id="btn-rozlicz-dzialke" type="button">+ Rozlicz działkę</button>
             <button class="btn btn-danger btn-sm admin-only" id="btn-del-sezon-roz" type="button">🗑 Usuń sezon</button>
           </div>
         </div>
@@ -337,9 +338,33 @@ body.is-admin .admin-only-block{display:block}
     <!-- PŁATNOŚCI -->
     <div class="page" id="tab-platnosci">
       <div class="saldo-grid" id="saldo-grid"></div>
+
+      <!-- SALDO ŁĄCZNE PER DZIAŁKA -->
       <div class="card">
         <div class="card-hd">
-          <div class="card-hd-left"><h2>Historia płatności i saldo działek</h2><p>Stan rozliczeń — nadpłaty i niedopłaty</p></div>
+          <div class="card-hd-left"><h2>Saldo łączne działkowców</h2><p>Suma wszystkich sezonów uwzględniająca bilans otwarcia</p></div>
+          <div class="actions">
+            <button class="btn btn-ghost btn-sm" id="btn-csv-saldo" type="button">⬇ CSV</button>
+          </div>
+        </div>
+        <div class="tw">
+          <table class="mob-cards">
+            <thead><tr>
+              <th>Nr działki</th><th>Działkowiec</th>
+              <th style="text-align:right">Należności</th>
+              <th style="text-align:right">Wpłacono</th>
+              <th style="text-align:right">Saldo łączne</th>
+              <th>Stan</th>
+            </tr></thead>
+            <tbody id="tb-saldo-dzialki"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SZCZEGÓŁY PER SEZON -->
+      <div class="card">
+        <div class="card-hd">
+          <div class="card-hd-left"><h2>Szczegóły per sezon</h2><p>Historia wpłat z podziałem na sezony</p></div>
           <div class="actions">
             <button class="btn btn-ghost btn-sm" id="btn-csv-plat" type="button">⬇ CSV</button>
           </div>
@@ -502,6 +527,11 @@ body.is-admin .admin-only-block{display:block}
     <div class="fr"><label>Adres zamieszkania (dz. 2)</label><input id="dz-adres2" placeholder="Pozostaw puste jeśli taki sam jak dz. 1" /></div>
 
     <div class="fr"><label>Uwagi</label><textarea id="dz-uwagi" placeholder="Opcjonalne..."></textarea></div>
+    <div class="fr">
+      <label>Bilans otwarcia (zł)</label>
+      <input id="dz-bilans" type="number" step="0.01" placeholder="0.00" />
+      <div style="font-size:.74rem;color:var(--muted);margin-top:.3rem">Zaległości lub nadpłaty sprzed wdrożenia systemu. Ujemna = dług, dodatnia = nadpłata. Np. -150 oznacza że działkowiec jest winien 150 zł.</div>
+    </div>
     <div class="ferr" id="err-dz">Wypełnij: numer działki, imię i nazwisko.</div>
     <div class="mfooter">
       <button class="btn btn-ghost" data-close="m-dz" type="button">Anuluj</button>
@@ -548,6 +578,21 @@ body.is-admin .admin-only-block{display:block}
     <div class="mfooter">
       <button class="btn btn-ghost" data-close="m-sz" type="button">Anuluj</button>
       <button class="btn btn-primary" id="btn-save-sz" type="button">Zapisz</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Rozlicz pojedynczą działkę -->
+<div class="modal-bd" id="m-rozlicz-dzialke">
+  <div class="modal">
+    <h3>+ Rozlicz pojedynczą działkę</h3>
+    <div class="fr"><label>Sezon *</label><select id="rdz-sezon"><option value="">— wybierz sezon —</option></select></div>
+    <div class="fr"><label>Działka *</label><select id="rdz-dzialka"><option value="">— wybierz działkę —</option></select></div>
+    <div id="rdz-info" style="display:none;padding:.6rem .8rem;background:var(--g100);border-radius:var(--rsm);font-size:.82rem;margin-bottom:.5rem"></div>
+    <div class="ferr" id="err-rdz"></div>
+    <div class="mfooter">
+      <button class="btn btn-ghost" data-close="m-rozlicz-dzialke" type="button">Anuluj</button>
+      <button class="btn btn-primary" id="btn-save-rdz" type="button">Rozlicz</button>
     </div>
   </div>
 </div>
@@ -671,11 +716,43 @@ const SB_KEY_CONST = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 //  SUPABASE REST
 // ══════════════════════════════════════════════
 let SB_URL=SB_URL_CONST, SB_KEY=SB_KEY_CONST, SB_TOKEN='';
+
+async function refreshToken(){
+  try{
+    const sess=JSON.parse(localStorage.getItem('rod5_sess')||'null');
+    if(!sess?.refresh_token) return false;
+    const r=await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY},
+      body:JSON.stringify({refresh_token:sess.refresh_token})
+    });
+    if(!r.ok) return false;
+    const d=await r.json();
+    SB_TOKEN=d.access_token;
+    localStorage.setItem('rod5_sess',JSON.stringify({
+      access_token:d.access_token,
+      refresh_token:d.refresh_token,
+      expires_at:Math.floor(Date.now()/1000)+(d.expires_in||3600),
+      user:d.user||sess.user
+    }));
+    return true;
+  }catch(e){return false;}
+}
+
+async function ensureToken(){
+  const sess=JSON.parse(localStorage.getItem('rod5_sess')||'null');
+  if(!sess) return;
+  // Odśwież jeśli zostało mniej niż 5 minut
+  if(sess.expires_at-Date.now()/1000 < 300){
+    await refreshToken();
+  }
+}
+
 function sbH(){return{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_TOKEN,'Prefer':'return=representation'};}
-async function sbGet(t,q){const r=await fetch(SB_URL+'/rest/v1/'+t+'?'+q,{headers:sbH()});if(!r.ok){const e=await r.json();throw new Error(e.message||r.status);}return r.json();}
-async function sbPost(t,d){const r=await fetch(SB_URL+'/rest/v1/'+t,{method:'POST',headers:sbH(),body:JSON.stringify(d)});if(!r.ok){const e=await r.json();throw new Error(e.message||r.status);}return r.json();}
-async function sbPatch(t,id,d){const r=await fetch(SB_URL+'/rest/v1/'+t+'?id=eq.'+id,{method:'PATCH',headers:sbH(),body:JSON.stringify(d)});if(!r.ok){const e=await r.json();throw new Error(e.message||r.status);}return r.json();}
-async function sbDel(t,id){const r=await fetch(SB_URL+'/rest/v1/'+t+'?id=eq.'+id,{method:'DELETE',headers:sbH()});if(!r.ok){const e=await r.json();throw new Error(e.message||r.status);}return true;}
+async function sbGet(t,q){await ensureToken();const r=await fetch(SB_URL+'/rest/v1/'+t+'?'+q,{headers:sbH()});if(!r.ok){const e=await r.json();throw new Error(e.message||r.status);}return r.json();}
+async function sbPost(t,d){await ensureToken();const r=await fetch(SB_URL+'/rest/v1/'+t,{method:'POST',headers:sbH(),body:JSON.stringify(d)});if(!r.ok){const e=await r.json();throw new Error(e.message||r.status);}return r.json();}
+async function sbPatch(t,id,d){await ensureToken();const r=await fetch(SB_URL+'/rest/v1/'+t+'?id=eq.'+id,{method:'PATCH',headers:sbH(),body:JSON.stringify(d)});if(!r.ok){const e=await r.json();throw new Error(e.message||r.status);}return r.json();}
+async function sbDel(t,id){await ensureToken();const r=await fetch(SB_URL+'/rest/v1/'+t+'?id=eq.'+id,{method:'DELETE',headers:sbH()});if(!r.ok){const e=await r.json();throw new Error(e.message||r.status);}return true;}
 
 // ══════════════════════════════════════════════
 //  STATE
@@ -783,7 +860,7 @@ document.getElementById('btn-otp-save').addEventListener('click',async function(
     });
     if(!r2.ok){const e=await r2.json();throw new Error(e.message||'Błąd zmiany hasła');}
     // Krok 3: zapisz sesję i zaloguj
-    localStorage.setItem('rod5_sess',JSON.stringify({access_token:d.access_token,expires_at:Math.floor(Date.now()/1000)+(d.expires_in||3600),user:d.user}));
+    localStorage.setItem('rod5_sess',JSON.stringify({access_token:d.access_token,refresh_token:d.refresh_token,expires_at:Math.floor(Date.now()/1000)+(d.expires_in||3600),user:d.user}));
     hide('otp-ov');
     toast('Hasło ustawione! Jesteś zalogowany.','ok');
     showApp(d.user?.email||'');
@@ -804,7 +881,7 @@ document.getElementById('btn-login').addEventListener('click',async function(){
     const r=await fetch(SB_URL+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY},body:JSON.stringify({email,password:pass})});
     const d=await r.json();if(!r.ok)throw new Error(d.error_description||'Błąd logowania');
     SB_TOKEN=d.access_token;
-    localStorage.setItem('rod5_sess',JSON.stringify({access_token:d.access_token,expires_at:Math.floor(Date.now()/1000)+(d.expires_in||3600),user:d.user}));
+    localStorage.setItem('rod5_sess',JSON.stringify({access_token:d.access_token,refresh_token:d.refresh_token,expires_at:Math.floor(Date.now()/1000)+(d.expires_in||3600),user:d.user}));
     showApp(d.user?.email||'');
   }catch(e){setErr(errEl,e.message);this.disabled=false;this.textContent='Zaloguj się';}
 });
@@ -949,7 +1026,16 @@ async function loadAll(){await Promise.all([loadDz(),loadLicz(),loadSz(),loadOd(
 async function loadDz(){allDz=await sbGet('dzialki','select=*&order=numer_dzialki.asc')||[];renderDz();populateLiczDzSel();}
 async function loadLicz(){allLicz=await sbGet('liczniki','select=*,dzialki(numer_dzialki,imie,nazwisko)&order=created_at.desc')||[];renderLicz();document.getElementById('cnt-licz').textContent=allLicz.filter(l=>l.status==='aktywny').length+' aktywnych';}
 async function loadSz(){allSz=await sbGet('sezony','select=*&order=data_od.desc')||[];renderSz();populateSzSels();}
-async function loadOd(){allOd=await sbGet('odczyty','select=*,liczniki(numer,dzialka_id,dzialki(numer_dzialki,imie,nazwisko))&order=data_odczytu.desc')||[];}
+async function loadOd(){
+  const raw=await sbGet('odczyty','select=*,liczniki(numer,dzialka_id,dzialki(numer_dzialki,imie,nazwisko))&order=data_odczytu.desc')||[];
+  // Usuń duplikaty: dla każdego licznika+sezon zachowaj tylko ostatni odczyt
+  const seen=new Set();
+  allOd=raw.filter(o=>{
+    const key=o.licznik_id+'_'+(o.sezon_id||'null');
+    if(seen.has(key)) return false;
+    seen.add(key);return true;
+  });
+}
 async function loadRoz(){allRoz=await sbGet('rozliczenia','select=*,dzialki(numer_dzialki,imie,nazwisko,imie2,nazwisko2),sezony(nazwa,stawka)&order=created_at.desc')||[];renderRoz();renderRozSummary();}
 async function loadPlat(){allPlat=await sbGet('platnosci','select=*&order=data_wplaty.desc')||[];renderPlatnosci();}
 
@@ -986,12 +1072,24 @@ document.getElementById('sel-sezon').addEventListener('change',function(){
 });
 function getSeasonReadings(szId){
   const map={};
-  allOd.filter(o=>o.sezon_id===szId).forEach(o=>{if(!map[o.licznik_id]||o.data_odczytu>map[o.licznik_id].data_odczytu)map[o.licznik_id]=o;});
+  allOd.filter(o=>o.sezon_id===szId).forEach(o=>{
+    if(!map[o.licznik_id]||o.data_odczytu>map[o.licznik_id].data_odczytu) map[o.licznik_id]=o;
+  });
   return map;
 }
 function getPrevOdczyt(licznikId,szId){
+  // Szukaj ostatniego odczytu z POPRZEDNICH sezonów (nie bieżącego)
+  // sortuj sezony po dacie, znajdź te wcześniejsze niż bieżący
   const sz=allSz.find(s=>s.id===szId);if(!sz)return null;
-  return allOd.filter(o=>o.licznik_id===licznikId&&o.data_odczytu<sz.data_od).sort((a,b)=>b.data_odczytu.localeCompare(a.data_odczytu))[0]||null;
+  // Odczyty z innych sezonów które kończyły się przed bieżącym
+  const prevSzIds=allSz.filter(s=>s.data_do<sz.data_od).map(s=>s.id);
+  // Szukaj w poprzednich sezonach
+  const fromPrevSz=allOd.filter(o=>o.licznik_id===licznikId&&prevSzIds.includes(o.sezon_id))
+    .sort((a,b)=>b.data_odczytu.localeCompare(a.data_odczytu));
+  if(fromPrevSz.length) return fromPrevSz[0];
+  // Fallback: szukaj po dacie (odczyty bez sezon_id lub sprzed bieżącego sezonu)
+  return allOd.filter(o=>o.licznik_id===licznikId&&o.data_odczytu<sz.data_od&&o.sezon_id!==szId)
+    .sort((a,b)=>b.data_odczytu.localeCompare(a.data_odczytu))[0]||null;
 }
 function renderReadingTable(){
   const tb=document.getElementById('tb-reading');
@@ -1049,10 +1147,21 @@ document.getElementById('btn-save-readings').addEventListener('click',async func
   this.disabled=true;this.innerHTML='<span class="spin"></span>';
   const today=new Date().toISOString().split('T')[0];
   const dateToUse=today>=sz.data_od&&today<=sz.data_do?today:sz.data_do;
+  const sr=getSeasonReadings(currentSezonId);
   let saved=0,errors=0;
-  for(const [,{licznikId,stan}] of items){
+  for(const [dzId,{licznikId,stan}] of items){
     const stanVal=parseFloat(stan);if(isNaN(stanVal)){errors++;continue;}
-    try{await sbPost('odczyty',{licznik_id:licznikId,sezon_id:currentSezonId,data_odczytu:dateToUse,stan:stanVal});saved++;}
+    try{
+      const existing=sr[licznikId];
+      if(existing){
+        // Aktualizuj tylko stan — nie zmieniaj daty
+        await sbPatch('odczyty',existing.id,{stan:stanVal});
+      } else {
+        // Nowy odczyt — zapisz z datą
+        await sbPost('odczyty',{licznik_id:licznikId,sezon_id:currentSezonId,data_odczytu:dateToUse,stan:stanVal});
+      }
+      saved++;
+    }
     catch(e){errors++;console.error(e);}
   }
   pendingReadings={};await loadOd();renderReadingTable();updateSaveBar();
@@ -1127,6 +1236,43 @@ document.getElementById('btn-confirm-roz').addEventListener('click',async functi
 //  ROZLICZENIA
 // ══════════════════════════════════════════════
 function getRozWplacono(rozId){return allPlat.filter(p=>p.rozliczenie_id===rozId).reduce((s,p)=>s+Number(p.kwota||0),0);}
+
+async function recalcRozliczenie(rozId){
+  const roz=allRoz.find(r=>r.id===rozId);
+  if(!roz){toast('Nie znaleziono rozliczenia.','err');return;}
+  const sz=allSz.find(s=>s.id===roz.sezon_id);
+  if(!sz){toast('Nie znaleziono sezonu.','err');return;}
+  // Pobierz aktualne odczyty dla tego licznika w tym sezonie
+  const odArr=allOd.filter(o=>o.licznik_id===roz.licznik_id&&o.sezon_id===roz.sezon_id)
+    .sort((a,b)=>a.data_odczytu.localeCompare(b.data_odczytu));
+  let startOd=null,endOd=null;
+  if(odArr.length>=2){
+    startOd=odArr[0];endOd=odArr[odArr.length-1];
+  } else if(odArr.length===1){
+    endOd=odArr[0];
+    startOd=getPrevOdczyt(roz.licznik_id,roz.sezon_id);
+  }
+  if(!startOd||!endOd){toast('Brak kompletu odczytów — nie można przeliczyć.','err');return;}
+  const zuzycie=+(endOd.stan-startOd.stan).toFixed(2);
+  const kwota=+(zuzycie*sz.stawka).toFixed(2);
+  if(zuzycie<0){toast('Zużycie jest ujemne — sprawdź odczyty.','err');return;}
+  if(!confirm(`Przelicz rozliczenie?\n\nNowe zużycie: ${zuzycie} kWh\nNowa kwota: ${kwota} zł\n\nWpłaty pozostaną bez zmian.`)) return;
+  try{
+    // Aktualizuj status na podstawie wpłat
+    const wpl=getRozWplacono(rozId);
+    let status='nieopłacone';
+    if(wpl>=kwota) status='opłacone';
+    else if(wpl>0) status='częściowe';
+    await sbPatch('rozliczenia',rozId,{
+      odczyt_start_id:startOd.id,odczyt_koniec_id:endOd.id,
+      stan_start:startOd.stan,stan_koniec:endOd.stan,
+      zuzycie,kwota,status
+    });
+    toast('Rozliczenie przeliczone ✓','ok');
+    await Promise.all([loadRoz(),loadPlat()]);
+  }catch(e){toast('Błąd: '+e.message,'err');}
+}
+
 function getFilteredRoz(){
   const q=document.getElementById('search-roz').value.toLowerCase();
   const sf=document.getElementById('filter-roz-sezon').value;
@@ -1169,6 +1315,7 @@ function renderRoz(){
       <td data-label="Status"><span class="badge ${bm[r.status]||'b-gray'}">${x(r.status)}</span></td>
       <td class="no-label admin-only" style="display:flex;gap:.3rem;flex-wrap:wrap">
         <button class="btn btn-blue btn-sm" data-add-wplata="${r.id}" type="button">+ Wpłata</button>
+        <button class="btn btn-amber btn-sm" data-recalc-roz="${r.id}" data-sezon-id="${r.sezon_id}" data-licz-id="${r.licznik_id||''}" type="button" title="Przelicz na podstawie aktualnych odczytów">🔄</button>
         <button class="btn btn-danger btn-sm" data-del-roz="${r.id}" type="button">🗑</button>
       </td>
     </tr>`;
@@ -1196,10 +1343,16 @@ document.querySelector('#tab-rozliczenia thead').addEventListener('click',functi
 document.getElementById('tb-roz').addEventListener('click',async function(e){
   if(!isAdmin)return;
   const wplBtn=e.target.closest('[data-add-wplata]');
+  const recalcBtn=e.target.closest('[data-recalc-roz]');
   const delBtn=e.target.closest('[data-del-roz]');
   if(wplBtn){openWplataModal(wplBtn.dataset.addWplata);}
+  if(recalcBtn){await recalcRozliczenie(recalcBtn.dataset.recalcRoz);}
   if(delBtn){
-    if(!confirm('Usunąć rozliczenie? Usunięte zostaną też powiązane wpłaty.'))return;
+    const roz=allRoz.find(r=>r.id===delBtn.dataset.delRoz);
+    const dz=roz?.dzialki||{};
+    const wpl=roz?getRozWplacono(roz.id):0;
+    const warnWpl=wpl>0?`\n\n⚠️ UWAGA: Ta działka ma zarejestrowane wpłaty (${fmt(wpl)} zł) które również zostaną TRWALE USUNIĘTE!`:'';
+    if(!confirm(`Usunąć rozliczenie działki ${dz.numer_dzialki||''}?\n\nTej operacji nie można cofnąć.${warnWpl}\n\nAby odtworzyć rozliczenie użyj przycisku "🔄 Przelicz" lub "Zatwierdź sezon" ponownie.`))return;
     try{await sbDel('rozliczenia',delBtn.dataset.delRoz);toast('Usunięto.');await Promise.all([loadRoz(),loadPlat()]);}
     catch(e){toast('Błąd: '+e.message,'err');}
   }
@@ -1215,6 +1368,80 @@ document.getElementById('btn-del-sezon-roz').addEventListener('click',async func
   try{for(const id of allRoz.filter(r=>r.sezon_id===sf).map(r=>r.id))await sbDel('rozliczenia',id);toast('Usunięto.','ok');await Promise.all([loadRoz(),loadPlat()]);}
   catch(e){toast('Błąd: '+e.message,'err');}
   this.disabled=false;this.innerHTML='🗑 Usuń sezon';
+});
+
+document.getElementById('btn-rozlicz-dzialke').addEventListener('click',()=>{
+  if(!isAdmin)return;
+  // Wypełnij selecty
+  const szSel=document.getElementById('rdz-sezon');
+  const dzSel=document.getElementById('rdz-dzialka');
+  szSel.innerHTML='<option value="">— wybierz sezon —</option>'+allSz.map(s=>`<option value="${s.id}">${x(s.nazwa)}</option>`).join('');
+  dzSel.innerHTML='<option value="">— wybierz działkę —</option>'+[...allDz].sort((a,b)=>natural(a.numer_dzialki)<natural(b.numer_dzialki)?-1:1).map(d=>`<option value="${d.id}">${x(d.numer_dzialki)} — ${x(dzFirstName(d))}</option>`).join('');
+  // Ustaw sezon z filtra jeśli wybrany
+  const sf=document.getElementById('filter-roz-sezon').value;
+  if(sf) szSel.value=sf;
+  document.getElementById('rdz-info').style.display='none';
+  document.getElementById('err-rdz').style.display='none';
+  openM('m-rozlicz-dzialke');
+});
+
+function updateRdzInfo(){
+  const szId=document.getElementById('rdz-sezon').value;
+  const dzId=document.getElementById('rdz-dzialka').value;
+  const infoEl=document.getElementById('rdz-info');
+  if(!szId||!dzId){infoEl.style.display='none';return;}
+  const sz=allSz.find(s=>s.id===szId);
+  const dz=allDz.find(d=>d.id===dzId);
+  const licz=allLicz.find(l=>l.dzialka_id===dzId&&l.status==='aktywny');
+  const existing=allRoz.find(r=>r.dzialka_id===dzId&&r.sezon_id===szId);
+  if(!licz){infoEl.innerHTML='⚠️ Brak aktywnego licznika dla tej działki.';infoEl.style.display='block';return;}
+  const odArr=allOd.filter(o=>o.licznik_id===licz.id&&o.sezon_id===szId).sort((a,b)=>a.data_odczytu.localeCompare(b.data_odczytu));
+  let startOd=odArr.length>=2?odArr[0]:getPrevOdczyt(licz.id,szId);
+  const endOd=odArr[odArr.length-1]||null;
+  if(!endOd){infoEl.innerHTML='⚠️ Brak odczytu w tym sezonie.';infoEl.style.display='block';return;}
+  if(!startOd){infoEl.innerHTML='⚠️ Brak odczytu startowego.';infoEl.style.display='block';return;}
+  const zuzycie=+(endOd.stan-startOd.stan).toFixed(2);
+  const kwota=+(zuzycie*sz.stawka).toFixed(2);
+  infoEl.innerHTML=`${existing?'⚠️ Rozliczenie już istnieje — zostanie <strong>zastąpione</strong>.<br>':''}
+    Zużycie: <strong>${fmt(zuzycie)} kWh</strong> &nbsp;·&nbsp; Kwota: <strong>${fmt(kwota)} zł</strong><br>
+    <span style="font-size:.76rem;color:var(--muted)">Odczyt start: ${fmt(startOd.stan)} kWh (${fmtD(startOd.data_odczytu)}) → koniec: ${fmt(endOd.stan)} kWh (${fmtD(endOd.data_odczytu)})</span>`;
+  infoEl.style.display='block';
+}
+document.getElementById('rdz-sezon').addEventListener('change',updateRdzInfo);
+document.getElementById('rdz-dzialka').addEventListener('change',updateRdzInfo);
+
+document.getElementById('btn-save-rdz').addEventListener('click',async function(){
+  if(!isAdmin)return;
+  const szId=document.getElementById('rdz-sezon').value;
+  const dzId=document.getElementById('rdz-dzialka').value;
+  const errEl=document.getElementById('err-rdz');errEl.style.display='none';
+  if(!szId||!dzId){setErr(errEl,'Wybierz sezon i działkę.');return;}
+  const sz=allSz.find(s=>s.id===szId);
+  const licz=allLicz.find(l=>l.dzialka_id===dzId&&l.status==='aktywny');
+  if(!licz){setErr(errEl,'Brak aktywnego licznika.');return;}
+  const odArr=allOd.filter(o=>o.licznik_id===licz.id&&o.sezon_id===szId).sort((a,b)=>a.data_odczytu.localeCompare(b.data_odczytu));
+  let startOd=odArr.length>=2?odArr[0]:getPrevOdczyt(licz.id,szId);
+  const endOd=odArr[odArr.length-1]||null;
+  if(!endOd||!startOd){setErr(errEl,'Brak kompletu odczytów.');return;}
+  const zuzycie=+(endOd.stan-startOd.stan).toFixed(2);
+  const kwota=+(zuzycie*sz.stawka).toFixed(2);
+  if(zuzycie<0){setErr(errEl,'Zużycie jest ujemne — sprawdź odczyty.');return;}
+  this.disabled=true;this.innerHTML='<span class="spin"></span>';
+  try{
+    // Usuń stare rozliczenie jeśli istnieje
+    const existing=allRoz.find(r=>r.dzialka_id===dzId&&r.sezon_id===szId);
+    if(existing) await sbDel('rozliczenia',existing.id);
+    await sbPost('rozliczenia',{
+      dzialka_id:dzId,sezon_id:szId,licznik_id:licz.id,
+      odczyt_start_id:startOd.id,odczyt_koniec_id:endOd.id,
+      stan_start:startOd.stan,stan_koniec:endOd.stan,
+      zuzycie,stawka:sz.stawka,kwota,status:'nieopłacone'
+    });
+    closeM('m-rozlicz-dzialke');
+    toast(`Rozliczenie utworzone: ${fmt(zuzycie)} kWh, ${fmt(kwota)} zł`,'ok');
+    await Promise.all([loadRoz(),loadPlat()]);
+  }catch(e){setErr(errEl,e.message);}
+  this.disabled=false;this.innerHTML='Rozlicz';
 });
 document.getElementById('btn-csv-roz').addEventListener('click',()=>{
   const rows=getFilteredRoz();
@@ -1312,7 +1539,39 @@ function getFilteredPlat(){
     return mQ&&mS&&mSaldo;
   });
 }
+function getDzSaldoLaczne(dzId){
+  const dz=allDz.find(d=>d.id===dzId);
+  const bilans=Number(dz?.bilans_otwarcia||0);
+  const rozDz=allRoz.filter(r=>r.dzialka_id===dzId);
+  const naleznosci=rozDz.reduce((s,r)=>s+Number(r.kwota||0),0);
+  const wplacono=rozDz.reduce((s,r)=>s+getRozWplacono(r.id),0);
+  return {bilans,naleznosci,wplacono,saldo:bilans+wplacono-naleznosci};
+}
+
+function renderSaldoDzialki(){
+  const tb=document.getElementById('tb-saldo-dzialki');
+  if(!tb) return;
+  const sorted=[...allDz].sort((a,b)=>natural(a.numer_dzialki)<natural(b.numer_dzialki)?-1:1);
+  if(!sorted.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--muted)">Brak działek</td></tr>';return;}
+  // Sortuj: najpierw największe niedopłaty
+  const withSaldo=sorted.map(d=>({d,s:getDzSaldoLaczne(d.id)}));
+  withSaldo.sort((a,b)=>a.s.saldo-b.s.saldo);
+  tb.innerHTML=withSaldo.map(({d,s})=>{
+    const stan=s.saldo<-0.01?'<span class="badge b-red">Niedopłata</span>':s.saldo>0.01?'<span class="badge b-green">Nadpłata</span>':'<span class="badge b-gray">Wyrównane</span>';
+    const bilansTxt=s.bilans!==0?`<br><span style="font-size:.72rem;color:var(--muted)">Bilans otwarcia: ${s.bilans>0?'+':''}${fmt(s.bilans)} zł</span>`:'';
+    return `<tr>
+      <td data-os="${x(dzFirstName(d))}"><strong>${x(d.numer_dzialki)}</strong></td>
+      <td data-label="Działkowiec">${dzNazwisko(d)}${bilansTxt}</td>
+      <td data-label="Należności" class="mono" style="text-align:right">${fmt(s.naleznosci)} zł</td>
+      <td data-label="Wpłacono" class="mono" style="text-align:right">${fmt(s.wplacono)} zł</td>
+      <td data-label="Saldo" style="text-align:right">${fmtSaldo(s.saldo)}</td>
+      <td data-label="Stan">${stan}</td>
+    </tr>`;
+  }).join('');
+}
+
 function renderPlatnosci(){
+  renderSaldoDzialki();
   // Statystyki
   const allFiltered=getFilteredPlat();
   const totalNal=allFiltered.reduce((s,r)=>s+Number(r.kwota||0),0);
@@ -1409,6 +1668,17 @@ document.getElementById('btn-csv-plat').addEventListener('click',()=>{
     ...rows.map(r=>{const dz=r.dzialki||{};const sz=r.sezony||{};const wpl=getRozWplacono(r.id);return[dz.numer_dzialki||'',dz.imie||'',dz.nazwisko||'',sz.nazwa||'',r.kwota??'',wpl,wpl-Number(r.kwota||0),r.status||''];})
   ]);
 });
+document.getElementById('btn-csv-saldo').addEventListener('click',()=>{
+  const sorted=[...allDz].sort((a,b)=>natural(a.numer_dzialki)<natural(b.numer_dzialki)?-1:1);
+  dlCsv('saldo_laczne.csv',[
+    ['Nr działki','Imię','Nazwisko','Bilans otwarcia (zł)','Należności (zł)','Wpłacono (zł)','Saldo łączne (zł)','Stan'],
+    ...sorted.map(d=>{
+      const s=getDzSaldoLaczne(d.id);
+      const stan=s.saldo<-0.01?'Niedopłata':s.saldo>0.01?'Nadpłata':'Wyrównane';
+      return[d.numer_dzialki,d.imie,d.nazwisko,s.bilans,s.naleznosci,s.wplacono,s.saldo,stan];
+    })
+  ]);
+});
 
 // ══════════════════════════════════════════════
 //  DZIAŁKI
@@ -1451,7 +1721,7 @@ document.querySelector('#tab-ustawienia .setting-section-hd[data-section="dz"]')
 document.getElementById('btn-add-dz').addEventListener('click',()=>{
   document.getElementById('dz-id').value='';
   document.getElementById('m-dz-title').textContent='Nowa działka';
-  ['dz-nr','dz-imie','dz-nazw','dz-tel','dz-adres','dz-email','dz-uwagi','dz-imie2','dz-nazw2','dz-tel2','dz-adres2','dz-email2'].forEach(id=>document.getElementById(id).value='');
+  ['dz-nr','dz-imie','dz-nazw','dz-tel','dz-adres','dz-email','dz-uwagi','dz-imie2','dz-nazw2','dz-tel2','dz-adres2','dz-email2','dz-bilans'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('err-dz').style.display='none';openM('m-dz');
 });
 document.getElementById('btn-copy-adres').addEventListener('click',()=>{
@@ -1470,6 +1740,7 @@ document.getElementById('tb-dz').addEventListener('click',async function(e){
     document.getElementById('dz-imie2').value=d.imie2||'';document.getElementById('dz-nazw2').value=d.nazwisko2||'';
     document.getElementById('dz-tel2').value=d.telefon2||'';document.getElementById('dz-adres2').value=d.adres2||'';document.getElementById('dz-email2').value=d.email2||'';
     document.getElementById('dz-uwagi').value=d.uwagi||'';
+    document.getElementById('dz-bilans').value=d.bilans_otwarcia||'';
     document.getElementById('err-dz').style.display='none';openM('m-dz');
   }
   if(delBtn){
@@ -1494,7 +1765,8 @@ document.getElementById('btn-save-dz').addEventListener('click',async function()
     telefon2:document.getElementById('dz-tel2').value.trim()||null,
     adres2:document.getElementById('dz-adres2').value.trim()||null,
     email2:document.getElementById('dz-email2').value.trim()||null,
-    uwagi:document.getElementById('dz-uwagi').value.trim()||null
+    uwagi:document.getElementById('dz-uwagi').value.trim()||null,
+    bilans_otwarcia:parseFloat(document.getElementById('dz-bilans').value)||0
   };
   if(!p.numer_dzialki||!p.imie||!p.nazwisko){errEl.style.display='block';return;}
   this.disabled=true;
