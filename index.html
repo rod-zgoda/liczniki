@@ -290,6 +290,7 @@ body.is-ksiegowy .admin-only{display:inline-flex}
     <button data-tab="dzialki">Działki</button>
     <button data-tab="sezony">Sezony</button>
     <button data-tab="admins" class="admin-only">Administratorzy</button>
+
   </nav>
   <main>
 
@@ -382,7 +383,8 @@ body.is-ksiegowy .admin-only{display:inline-flex}
           <div class="card-hd-left"><h2>Działki i liczniki</h2><p id="cnt-dz"></p></div>
           <div class="acts">
             <button class="btn btn-g btn-sm" id="btn-exp-csv">Eksportuj CSV</button>
-            <button class="btn btn-g btn-sm" id="btn-imp-csv">Importuj CSV</button>
+            <button class="btn btn-g btn-sm admin-only" id="btn-imp-csv">Importuj CSV</button>
+            <button class="btn btn-s btn-sm admin-only" id="btn-nowy-licz-global">+ Licznik</button>
             <button class="btn btn-p btn-sm admin-only" id="btn-nowa-dz">+ Działka</button>
           </div>
         </div>
@@ -506,6 +508,10 @@ body.is-ksiegowy .admin-only{display:inline-flex}
     <h3 id="m-licz-t">Nowy licznik</h3>
     <input type="hidden" id="licz-id" />
     <input type="hidden" id="licz-dz-id" />
+    <div class="f" id="licz-dz-row" style="display:none">
+      <label>Działka *</label>
+      <select id="licz-dz-sel"><option value="">— wybierz działkę —</option></select>
+    </div>
     <div class="fg2">
       <div class="f"><label>Nr licznika *</label><input id="licz-nr" placeholder="np. 12345678" /></div>
       <div class="f"><label>Data montażu *</label><input id="licz-mont" type="date" /></div>
@@ -985,11 +991,25 @@ function renderOdczyty() {
   let filled=0, total=0;
   const rows=[];
   for (const dz of sorted) {
-    const wszystkie = allLicz.filter(l=>l.dzialka_id===dz.id);
-    const aktywny = wszystkie.find(l=>l.status==='aktywny');
-    const zOdczytem = wszystkie.filter(l=>l.id!==aktywny?.id && allOd.some(o=>o.licznik_id===l.id&&o.sezon_id===currentSezonId));
-    const doPokazania = [...zOdczytem];
-    if (aktywny) doPokazania.push(aktywny);
+    // Wszystkie liczniki działki posortowane wg daty montażu rosnąco
+    const wszystkie = allLicz.filter(l=>l.dzialka_id===dz.id)
+      .sort((a,b)=>a.data_montazu<b.data_montazu?-1:1);
+    if (!wszystkie.length) {
+      rows.push(`<tr><td><strong>${x(dz.numer_dzialki)}</strong></td><td>${dzName1(dz).trim()||'—'}</td><td colspan="6" style="color:var(--muted);font-size:.74rem">⚠ Brak aktywnego licznika</td></tr>`);
+      continue;
+    }
+    // Dla każdego licznika ustal czy był czynny w tym sezonie:
+    // Licznik był czynny w sezonie jeśli:
+    //   - został zamontowany przed końcem sezonu (data_montazu <= sz.data_do)
+    //   - AND jego następnik (jeśli istnieje) został zamontowany po początku sezonu (nastepnik.data_montazu > sz.data_od)
+    //     czyli wymiana nastąpiła W TRAKCIE lub PO sezonie
+    const doPokazania = sz ? wszystkie.filter(l=>{
+      if (l.data_montazu > sz.data_do) return false; // zamontowany po sezonie — niewidoczny
+      const nastepnik = wszystkie.find(n=>n.data_montazu > l.data_montazu);
+      if (!nastepnik) return true; // brak następnika = aktywny = zawsze widoczny w sezonie
+      // następnik zamontowany po początku sezonu = licznik był czynny w tym sezonie
+      return nastepnik.data_montazu > sz.data_od;
+    }) : wszystkie.filter(l=>l.status==='aktywny');
     if (!doPokazania.length) {
       rows.push(`<tr><td><strong>${x(dz.numer_dzialki)}</strong></td><td>${dzName1(dz).trim()||'—'}</td><td colspan="6" style="color:var(--muted);font-size:.74rem">⚠ Brak aktywnego licznika</td></tr>`);
       continue;
@@ -1009,7 +1029,18 @@ function renderOdczyty() {
       const kwota = calcKwota(zuzycie, currentSezonId);
       const kwotaHtml = kwota!==null?`<span class="${zuzycie>=0?'zuz-pos':'zuz-neg'}">${fmt(kwota)} zł</span>`:'—';
       const badge = pending?'<span class="rs rs-chg">✏</span>':existOd?'<span class="rs rs-ok">✓</span>':'<span class="rs rs-empty">—</span>';
-      const wymLbl = doPokazania.length>1?` <span class="badge ba" style="font-size:.66rem">${licz.status==='wymieniony'?'stary':'nowy'}</span>`:'';
+      // Etykieta stary/nowy opisuje rolę licznika w TYM sezonie, nie obecny status w bazie.
+      // "stary" = ma następnika zamontowanego w tym sezonie (był wymieniany w tym sezonie)
+      // "nowy"  = nie ma następnika w tym sezonie (jest najnowszy w tym sezonie)
+      let wymLbl = '';
+      if (doPokazania.length > 1) {
+        const nastepnikWSezonie = wszystkie.find(n =>
+          n.data_montazu > licz.data_montazu &&
+          sz && n.data_montazu >= sz.data_od && n.data_montazu <= sz.data_do
+        );
+        const rolaSezonu = nastepnikWSezonie ? 'stary' : 'nowy';
+        wymLbl = ` <span class="badge ba" style="font-size:.66rem">${rolaSezonu}</span>`;
+      }
       rows.push(`<tr class="${existOd&&!pending?'has-r':''}">
         <td>${idx===0?`<strong>${x(dz.numer_dzialki)}</strong>`:''}</td>
         <td data-l="Działkowiec">${idx===0?dzName1(dz).trim()||'—':''}</td>
@@ -1564,6 +1595,7 @@ document.querySelector('#tbl-dz thead').addEventListener('click',e=>{
   renderDzialki();
 });
 document.getElementById('btn-nowa-dz').addEventListener('click',()=>openDzModal(null));
+document.getElementById('btn-nowy-licz-global').addEventListener('click',()=>openLiczModal(null,null,true));
 
 function openDzModal(id=null) {
   const dz=id?allDz.find(d=>d.id===id):null;
@@ -1623,7 +1655,7 @@ document.getElementById('btn-save-dz').addEventListener('click', async function(
   this.disabled=false; this.innerHTML='Zapisz działkę';
 });
 
-function openLiczModal(id=null, dzId=null) {
+function openLiczModal(id=null, dzId=null, globalMode=false) {
   const l=id?allLicz.find(ll=>ll.id===id):null;
   document.getElementById('m-licz-t').textContent=l?'Edytuj licznik':'Nowy licznik';
   document.getElementById('licz-id').value=l?.id||'';
@@ -1635,6 +1667,17 @@ function openLiczModal(id=null, dzId=null) {
   document.getElementById('licz-status').value=l?.status||'aktywny';
   document.getElementById('licz-uw').value=l?.uwagi||'';
   document.getElementById('err-licz').style.display='none';
+  // Pokaż select działki tylko gdy otwieramy globalnie (bez kontekstu działki)
+  const dzRow = document.getElementById('licz-dz-row');
+  const dzSel = document.getElementById('licz-dz-sel');
+  const showDzSel = globalMode && !id;
+  dzRow.style.display = showDzSel ? 'block' : 'none';
+  if (showDzSel) {
+    dzSel.innerHTML = '<option value="">— wybierz działkę —</option>' +
+      [...allDz].sort((a,b)=>natural(a.numer_dzialki)<natural(b.numer_dzialki)?-1:1)
+        .map(d=>`<option value="${d.id}">${x(d.numer_dzialki)} — ${x(dzName1(d).trim())}</option>`).join('');
+    dzSel.value = dzId||'';
+  }
   openM('m-licz');
 }
 document.getElementById('licz-mont').addEventListener('change',function(){
@@ -1647,13 +1690,16 @@ document.getElementById('licz-mont').addEventListener('change',function(){
 document.getElementById('btn-save-licz').addEventListener('click', async function() {
   if(!isAdmin()) return;
   const id=document.getElementById('licz-id').value;
-  const dzId=document.getElementById('licz-dz-id').value;
+  const dzRow=document.getElementById('licz-dz-row');
+  const dzSel=document.getElementById('licz-dz-sel');
+  const dzId=dzRow.style.display!=='none'?dzSel.value:document.getElementById('licz-dz-id').value;
   const nr=document.getElementById('licz-nr').value.trim();
   const mont=document.getElementById('licz-mont').value;
   const legal=document.getElementById('licz-legal').value;
   const stan=parseFloat(document.getElementById('licz-stan').value);
   const errEl=document.getElementById('err-licz'); errEl.style.display='none';
   if(!nr||!mont||isNaN(stan)){setErr(errEl,'Nr licznika, data montażu i stan początkowy są wymagane.');return;}
+  if(!id&&!dzId){setErr(errEl,'Wybierz działkę.');return;}
   this.disabled=true; this.innerHTML='<span class="spin"></span>';
   const data={numer:nr,data_montazu:mont,data_legalizacji:legal,stan_poczatkowy:stan,
     status:document.getElementById('licz-status').value,
