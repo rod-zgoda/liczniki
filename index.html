@@ -221,15 +221,17 @@ body.is-ksiegowy .admin-only{display:inline-flex}
   .mob tbody td:first-child::before{display:none}
   .mob tbody td[data-l="Działkowiec"]{display:none}
   .mob .tw{border:none;overflow:visible}
-  /* Odczyty mobile */
-  .r-tbl thead{display:none}
-  .r-tbl tbody tr{display:block;background:#fff;border:1px solid var(--border);border-radius:var(--r);margin-bottom:.65rem;padding:.7rem .85rem;box-shadow:var(--shadow)}
-  .r-tbl tbody tr.has-r{background:#edf8f0;border-color:#aadabb}
-  .r-tbl tbody td{display:flex;justify-content:space-between;align-items:center;padding:.25rem 0;border:none;font-size:.81rem}
-  .r-tbl tbody td[data-l]::before{content:attr(data-l);font-size:.68rem;font-weight:600;color:var(--muted);text-transform:uppercase;white-space:nowrap;flex-shrink:0}
-  .r-tbl tbody td:first-child{font-size:.9rem;font-weight:600;color:var(--c1);border-bottom:1px solid var(--border);padding-bottom:.4rem;margin-bottom:.12rem}
-  .r-tbl tbody td:first-child::before{display:none}
+  /* Odczyty mobile — tabela ukryta, karty per działka w #tb-od-mob */
+  .r-tbl{display:none}
+  #tb-od-mob{display:block}
   .r-input{width:120px}
+  .od-mob-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);margin-bottom:.65rem;padding:.7rem .85rem;box-shadow:var(--shadow)}
+  .od-mob-card.has-r{background:#edf8f0;border-color:#aadabb}
+  .od-mob-hd{font-size:.9rem;font-weight:600;color:var(--c1);border-bottom:1px solid var(--border);padding-bottom:.38rem;margin-bottom:.45rem;display:flex;align-items:center;justify-content:space-between}
+  .od-mob-licz{padding:.35rem 0;border-bottom:1px solid #edf3ef}
+  .od-mob-licz:last-child{border-bottom:none}
+  .od-mob-row{display:flex;justify-content:space-between;align-items:center;padding:.18rem 0;font-size:.8rem;gap:.4rem}
+  .od-mob-lbl{font-size:.67rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;flex-shrink:0}
   .modal{padding:1.1rem;border-radius:9px}
   .modal-lg,.modal-xl{max-width:100%}
   .mfoot{flex-direction:column-reverse}
@@ -328,6 +330,7 @@ body.is-ksiegowy .admin-only{display:inline-flex}
             <tbody id="tb-od"></tbody>
           </table>
         </div>
+        <div id="tb-od-mob" style="display:none"></div>
       </div>
       <div class="save-bar admin-only-blk">
         <div class="save-bar-info" id="sb-info">Wybierz sezon, a następnie wpisz odczyty</div>
@@ -1053,7 +1056,12 @@ function renderOdczyty() {
       </tr>`);
     });
   }
+  const isMob = window.innerWidth <= 600;
+  document.querySelector('.r-tbl').style.display = isMob ? 'none' : '';
+  document.querySelector('.tw').style.display = isMob ? 'none' : '';
+  document.getElementById('tb-od-mob').style.display = isMob ? 'block' : 'none';
   tb.innerHTML = rows.join('');
+  renderOdczytyMobile(sorted, sz, canEdit);
   const total2 = sorted.reduce((s,d)=>{const a=allLicz.find(l=>l.dzialka_id===d.id&&l.status==='aktywny');return s+(a?1:0);},0);
   document.getElementById('od-subinfo').textContent = currentSezonId ? `${filled} / ${total} odczytów` : '';
   if (canEdit) {
@@ -1074,6 +1082,81 @@ function renderOdczyty() {
             if (kwotaTd && sz) kwotaTd.innerHTML = `<span class="${z>=0?'zuz-pos':'zuz-neg'}">${fmt(+(z*sz.stawka).toFixed(2))} zł</span>`;
           } else { zuzTd.innerHTML='—'; const kwotaTd=tr.children[6]; if(kwotaTd) kwotaTd.innerHTML='—'; }
         }
+        updateSaveBar();
+      });
+    });
+  }
+}
+
+function renderOdczytyMobile(sorted, sz, canEdit) {
+  const mob = document.getElementById('tb-od-mob');
+  if (!mob) return;
+  if (!currentSezonId || !sorted.length) { mob.innerHTML=''; return; }
+  const sr = getSezonOdczyty(currentSezonId);
+  const cards = [];
+  for (const dz of sorted) {
+    const wszystkie = allLicz.filter(l=>l.dzialka_id===dz.id)
+      .sort((a,b)=>a.data_montazu<b.data_montazu?-1:1);
+    if (!wszystkie.length) continue;
+    const doPokazania = sz ? wszystkie.filter(l=>{
+      if (l.data_montazu > sz.data_do) return false;
+      const nast = wszystkie.find(n=>n.data_montazu > l.data_montazu);
+      if (!nast) return true;
+      return nast.data_montazu > sz.data_od;
+    }) : wszystkie.filter(l=>l.status==='aktywny');
+    if (!doPokazania.length) continue;
+    const anyFilled = doPokazania.some(l=>sr[l.id] && !pendingOd[dz.id+'_'+l.id]);
+    let liczHTML = '';
+    doPokazania.forEach(licz=>{
+      const pKey = dz.id+'_'+licz.id;
+      const existOd = sr[licz.id]||null;
+      const prevOd = getPrevOdczyt(licz.id, currentSezonId);
+      const pending = pendingOd[pKey];
+      const displayStan = pending?.stan ?? (existOd?String(existOd.stan):'');
+      const stanVal = parseFloat(pending?.stan ?? existOd?.stan);
+      let zuzycie = null;
+      if (!isNaN(stanVal) && prevOd) zuzycie = +(stanVal - prevOd.stan).toFixed(2);
+      const kwota = calcKwota(zuzycie, currentSezonId);
+      const nastepnikWSezonie = wszystkie.find(n=>
+        n.data_montazu > licz.data_montazu && sz &&
+        n.data_montazu >= sz.data_od && n.data_montazu <= sz.data_do
+      );
+      const rolaSezonu = doPokazania.length>1 ? (nastepnikWSezonie?'stary':'nowy') : '';
+      const badge = pending?'<span class="rs rs-chg">✏</span>':existOd?'<span class="rs rs-ok">✓</span>':'<span class="rs rs-empty">—</span>';
+      liczHTML += `<div class="od-mob-licz">
+        <div class="od-mob-row">
+          <span class="od-mob-lbl">Nr licznika</span>
+          <span class="mono" style="font-size:.8rem">${x(licz.numer)}${rolaSezonu?` <span class="badge ba" style="font-size:.62rem">${rolaSezonu}</span>`:''}</span>
+        </div>
+        <div class="od-mob-row">
+          <span class="od-mob-lbl">Poprzedni odczyt</span>
+          <span>${prevOd?`<span class="mono">${fmt(prevOd.stan)} kWh</span> <small style="color:var(--muted)">(${fmtD(prevOd.data_odczytu)})</small>`:'<span style="color:var(--muted)">brak</span>'}</span>
+        </div>
+        <div class="od-mob-row">
+          <span class="od-mob-lbl">Nowy stan</span>
+          <input type="number" step="0.01" min="0" class="r-input${pending?' chg':''}" data-key="${pKey}" data-licz="${licz.id}" data-prev="${prevOd?prevOd.stan:''}" data-sz="${currentSezonId}" value="${x(displayStan)}" ${canEdit?'':'disabled'} />
+        </div>
+        <div class="od-mob-row">
+          <span class="od-mob-lbl">Zużycie / Kwota</span>
+          <span>${zuzycie!==null?`<span class="${zuzycie>=0?'zuz-pos':'zuz-neg'}">${fmt(zuzycie)} kWh</span>`:''} ${kwota!==null?`<span class="${zuzycie>=0?'zuz-pos':'zuz-neg'}">${fmt(kwota)} zł</span>`:zuzycie===null?'—':''}</span>
+        </div>
+        <div class="od-mob-row" style="justify-content:flex-end">${badge}</div>
+      </div>`;
+    });
+    cards.push(`<div class="od-mob-card${anyFilled?' has-r':''}">
+      <div class="od-mob-hd">
+        <span>${x(dz.numer_dzialki)} &nbsp;·&nbsp; <span style="font-weight:400;font-size:.82rem">${x(dzName1(dz).trim())}</span></span>
+      </div>
+      ${liczHTML}
+    </div>`);
+  }
+  mob.innerHTML = cards.join('');
+  if (canEdit) {
+    mob.querySelectorAll('.r-input').forEach(inp=>{
+      inp.addEventListener('input', function() {
+        const key=this.dataset.key, liczId=this.dataset.licz, val=this.value.trim();
+        if (val==='') { delete pendingOd[key]; this.classList.remove('chg'); }
+        else { pendingOd[key]={licznikId:liczId,stan:val}; this.classList.add('chg'); }
         updateSaveBar();
       });
     });
@@ -1168,8 +1251,7 @@ document.getElementById('btn-confirm-sz').addEventListener('click', async functi
   const items = JSON.parse(this.dataset.preview||'[]'); if(!items.length) return;
   this.disabled=true; this.innerHTML='<span class="spin"></span>';
   try {
-    // Zapisz wpłaty per działka+sezon (w nowej strukturze platnosci)
-    // Zablokuj sezon
+    // Zablokuj sezon (archiwizuj) — należności liczone na bieżąco z odczytów, nie zapisujemy ich osobno
     await sbPatch('sezony',currentSezonId,{status:'archiwalny'});
     closeM('m-prev');
     const dzCount = new Set(items.map(i=>i.dzialka_id)).size;
@@ -1194,12 +1276,20 @@ document.getElementById('btn-csv-od').addEventListener('click', ()=>{
   const sr = getSezonOdczyty(currentSezonId);
   const rows=[['Nr działki','Imię','Nazwisko','Imię 2','Nazwisko 2','Nr licznika','Stan (kWh)','Poprzedni (kWh)','Zużycie (kWh)','Kwota (zł)','Data odczytu']];
   [...allDz].sort((a,b)=>natural(a.numer_dzialki)<natural(b.numer_dzialki)?-1:1).forEach(dz=>{
-    const licz=allLicz.find(l=>l.dzialka_id===dz.id&&l.status==='aktywny');
-    const od=licz?sr[licz.id]:null;
-    const prev=licz?getPrevOdczyt(licz.id,currentSezonId):null;
-    const zuz=od&&prev?+(od.stan-prev.stan).toFixed(2):'';
-    const kw=zuz!==''&&sz?+(zuz*sz.stawka).toFixed(2):'';
-    rows.push([dz.numer_dzialki,dz.imie,dz.nazwisko,dz.imie2||'',dz.nazwisko2||'',licz?licz.numer:'',od?od.stan:'',prev?prev.stan:'',zuz,kw,od?od.data_odczytu:'']);
+    const wszystkie=allLicz.filter(l=>l.dzialka_id===dz.id).sort((a,b)=>a.data_montazu<b.data_montazu?-1:1);
+    const doExportu=sz?wszystkie.filter(l=>{
+      if(l.data_montazu>sz.data_do) return false;
+      const nast=wszystkie.find(n=>n.data_montazu>l.data_montazu);
+      return !nast||nast.data_montazu>sz.data_od;
+    }):wszystkie.filter(l=>l.status==='aktywny');
+    if(!doExportu.length){rows.push([dz.numer_dzialki,dz.imie,dz.nazwisko,dz.imie2||'',dz.nazwisko2||'','','','','','','']);return;}
+    doExportu.forEach(licz=>{
+      const od=sr[licz.id]||null;
+      const prev=getPrevOdczyt(licz.id,currentSezonId);
+      const zuz=od&&prev?+(od.stan-prev.stan).toFixed(2):'';
+      const kw=zuz!==''&&sz?+(zuz*sz.stawka).toFixed(2):'';
+      rows.push([dz.numer_dzialki,dz.imie,dz.nazwisko,dz.imie2||'',dz.nazwisko2||'',licz.numer,od?od.stan:'',prev?prev.stan:'',zuz,kw,od?od.data_odczytu:'']);
+    });
   });
   dlCsv(`odczyty_${(sz?.nazwa||'').replace(/\s/g,'_')}.csv`,rows);
 });
@@ -1208,13 +1298,21 @@ document.getElementById('btn-rtf-od').addEventListener('click', ()=>{
   if (!currentSezonId) { toast('Wybierz sezon.'); return; }
   const sz = allSz.find(s=>s.id===currentSezonId);
   const sr = getSezonOdczyty(currentSezonId);
-  const rows=[...allDz].sort((a,b)=>natural(a.numer_dzialki)<natural(b.numer_dzialki)?-1:1).map(dz=>{
-    const licz=allLicz.find(l=>l.dzialka_id===dz.id&&l.status==='aktywny');
-    const od=licz?sr[licz.id]:null;
-    const prev=licz?getPrevOdczyt(licz.id,currentSezonId):null;
-    const zuz=od&&prev?+(od.stan-prev.stan).toFixed(2):'—';
-    const kw=typeof zuz==='number'&&sz?fmt(+(zuz*sz.stawka).toFixed(2))+' zł':'—';
-    return[dz.numer_dzialki,dzName1(dz).trim(),licz?licz.numer:'—',prev?fmt(prev.stan)+' kWh':'—',od?fmt(od.stan)+' kWh':'—',typeof zuz==='number'?fmt(zuz)+' kWh':'—',kw];
+  const rows=[...allDz].sort((a,b)=>natural(a.numer_dzialki)<natural(b.numer_dzialki)?-1:1).flatMap(dz=>{
+    const wszystkie=allLicz.filter(l=>l.dzialka_id===dz.id).sort((a,b)=>a.data_montazu<b.data_montazu?-1:1);
+    const doExportu=sz?wszystkie.filter(l=>{
+      if(l.data_montazu>sz.data_do) return false;
+      const nast=wszystkie.find(n=>n.data_montazu>l.data_montazu);
+      return !nast||nast.data_montazu>sz.data_od;
+    }):wszystkie.filter(l=>l.status==='aktywny');
+    if(!doExportu.length) return[[dz.numer_dzialki,dzName1(dz).trim(),'—','—','—','—','—']];
+    return doExportu.map(licz=>{
+      const od=sr[licz.id]||null;
+      const prev=getPrevOdczyt(licz.id,currentSezonId);
+      const zuz=od&&prev?+(od.stan-prev.stan).toFixed(2):'—';
+      const kw=typeof zuz==='number'&&sz?fmt(+(zuz*sz.stawka).toFixed(2))+' zł':'—';
+      return[dz.numer_dzialki,dzName1(dz).trim(),licz.numer,prev?fmt(prev.stan)+' kWh':'—',od?fmt(od.stan)+' kWh':'—',typeof zuz==='number'?fmt(zuz)+' kWh':'—',kw];
+    });
   });
   genRtf(`Odczyty — ${sz?.nazwa||''}`,`Stawka: ${sz?fmt(sz.stawka,4)+' zł/kWh':'—'}`,
     ['Nr działki','Działkowiec','Nr licznika','Poprzedni','Nowy stan','Zużycie','Kwota'],
@@ -1228,7 +1326,8 @@ function getDzSaldo(dzId, szId=null) {
   const bilans = szId ? 0 : Number(dz.bilans_otwarcia||0);
   // Naleznosci: wyliczane z odczytów
   let naleznosci = 0;
-  const sezonyDo = szId ? allSz.filter(s=>s.id===szId) : allSz.filter(s=>s.status==='archiwalny');
+  // Należności: wszystkie sezony (archiwalny i aktywny) — liczy się każdy z wpisanymi odczytami
+  const sezonyDo = szId ? allSz.filter(s=>s.id===szId) : allSz;
   for (const sz of sezonyDo) {
     const liczniki = allLicz.filter(l=>l.dzialka_id===dzId);
     const liczWithOd = liczniki.filter(l=>allOd.some(o=>o.licznik_id===l.id&&o.sezon_id===sz.id));
@@ -1253,7 +1352,7 @@ function renderPlatnosci() {
   const ss = document.getElementById('filt-plat-saldo').value;
 
   let dz = [...allDz].filter(d=>{
-    if (!allLicz.find(l=>l.dzialka_id===d.id&&l.status==='aktywny')) return false;
+    if (!allLicz.find(l=>l.dzialka_id===d.id)) return false; // ukryj tylko działki całkowicie bez liczników
     if (!q && !ss) return true;
     const mQ = !q || d.numer_dzialki?.toLowerCase().includes(q)||d.nazwisko?.toLowerCase().includes(q)||d.imie?.toLowerCase().includes(q);
     const s = getDzSaldo(d.id, sf||null);
@@ -1706,8 +1805,17 @@ document.getElementById('btn-save-licz').addEventListener('click', async functio
     uwagi:document.getElementById('licz-uw').value.trim()||null};
   try {
     let liczId=id;
-    if(id) await sbPatch('liczniki',id,data);
-    else {
+    if(id) {
+      await sbPatch('liczniki',id,data);
+      // Aktualizuj też odczyt startowy (sezon_id=null) — synchronizuj ze stan_poczatkowy
+      const startOd = allOd.find(o=>o.licznik_id===id && o.sezon_id===null);
+      if(startOd) {
+        await sbPatch('odczyty',startOd.id,{stan,data_odczytu:mont});
+      } else {
+        // Brak odczytu startowego — utwórz
+        await sbPost('odczyty',{licznik_id:id,sezon_id:null,data_odczytu:mont,stan});
+      }
+    } else {
       const res=await sbPost('liczniki',{...data,dzialka_id:dzId});
       liczId=res[0]?.id;
       // Zapisz stan początkowy jako odczyt z sezon_id=null
