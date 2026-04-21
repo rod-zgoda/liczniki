@@ -1181,7 +1181,7 @@ function getDzSaldo(dzId,szId=null){
       const startOd=getPrevOdczyt(licz.id,sz.id);
       if(!endOd||!startOd)continue;
       const zuz=+(endOd.stan-startOd.stan).toFixed(2);
-      if(zuz>=0)naleznosci+=+(zuz*sz.stawka).toFixed(2);
+      naleznosci+=+(zuz*sz.stawka).toFixed(2);
     }
   }
   const wplacono=allPlat.filter(p=>p.dzialka_id===dzId&&(!szId||p.sezon_id===szId)).reduce((s,p)=>s+Number(p.kwota||0),0);
